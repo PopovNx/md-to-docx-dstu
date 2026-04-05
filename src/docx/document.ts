@@ -1,0 +1,147 @@
+import { AlignmentType, Document, LevelFormat, Paragraph } from 'docx';
+
+const PAGE_MARGINS = {
+    top: 1440,
+    right: 1440,
+    bottom: 1440,
+    left: 1440,
+};
+
+export function buildDocument(children: Paragraph[]) {
+    return new Document({
+        sections: [
+            {
+                properties: {
+                    page: {
+                        size: {
+                            width: 11906,
+                            height: 16838,
+                        },
+                        margin: PAGE_MARGINS,
+                    },
+                },
+                children,
+            },
+        ],
+        styles: {
+            default: {
+                document: {
+                    run: {
+                        font: 'Times New Roman',
+                        size: 28,
+                    },
+                    paragraph: {
+                        spacing: {
+                            line: 360,
+                            lineRule: 'auto',
+                        },
+                    },
+                },
+            },
+            paragraphStyles: [
+                {
+                    id: 'BodyText',
+                    name: 'BodyText',
+                    basedOn: 'Normal',
+                    next: 'BodyText',
+                    run: { font: 'Times New Roman', size: 28 },
+                    paragraph: {
+                        alignment: AlignmentType.JUSTIFIED,
+                        indent: { firstLine: 708 },
+                        spacing: { before: 0, after: 120, line: 360, lineRule: 'auto' },
+                    },
+                },
+                {
+                    id: 'ChapterTitle',
+                    name: 'ChapterTitle',
+                    basedOn: 'Normal',
+                    next: 'BodyText',
+                    run: { font: 'Times New Roman', size: 28, bold: true },
+                    paragraph: {
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 0, after: 240, line: 360, lineRule: 'auto' },
+                    },
+                },
+                {
+                    id: 'SectionTitle',
+                    name: 'SectionTitle',
+                    basedOn: 'Normal',
+                    next: 'BodyText',
+                    run: { font: 'Times New Roman', size: 28, bold: true },
+                    paragraph: {
+                        alignment: AlignmentType.LEFT,
+                        spacing: { before: 120, after: 120, line: 360, lineRule: 'auto' },
+                    },
+                },
+                {
+                    id: 'ImageBlock',
+                    name: 'ImageBlock',
+                    basedOn: 'Normal',
+                    next: 'ImageCaption',
+                    run: { font: 'Times New Roman', size: 28 },
+                    paragraph: {
+                        alignment: AlignmentType.CENTER,
+                        indent: { firstLine: 0 },
+                        spacing: { before: 120, after: 0, line: 360, lineRule: 'auto' },
+                    },
+                },
+                {
+                    id: 'ImageCaption',
+                    name: 'ImageCaption',
+                    basedOn: 'Normal',
+                    next: 'BodyText',
+                    run: { font: 'Times New Roman', size: 28 },
+                    paragraph: {
+                        alignment: AlignmentType.CENTER,
+                        indent: { firstLine: 0 },
+                        spacing: { before: 0, after: 240, line: 360, lineRule: 'auto' },
+                    },
+                },
+                {
+                    id: 'CodeBlock',
+                    name: 'CodeBlock',
+                    basedOn: 'Normal',
+                    next: 'BodyText',
+                    run: { font: 'Times New Roman', size: 28 },
+                    paragraph: {
+                        alignment: AlignmentType.LEFT,
+                        spacing: { before: 120, after: 120, line: 240, lineRule: 'auto' },
+                        indent: { left: 720, right: 0 },
+                    },
+                },
+            ],
+        },
+        numbering: {
+            config: [
+                {
+                    reference: 'bullets',
+                    levels: Array.from({ length: 9 }, (_, level) => ({
+                        level,
+                        format: LevelFormat.BULLET,
+                        text: '-',
+                        alignment: AlignmentType.LEFT,
+                        style: {
+                            paragraph: {
+                                indent: { left: 720 + level * 360, hanging: 360 },
+                            },
+                        },
+                    })),
+                },
+                {
+                    reference: 'numbers',
+                    levels: Array.from({ length: 9 }, (_, level) => ({
+                        level,
+                        format: LevelFormat.DECIMAL,
+                        text: `${Array.from({ length: level + 1 }, (_value, index) => `%${index + 1}`).join('.')}.`,
+                        alignment: AlignmentType.LEFT,
+                        style: {
+                            paragraph: {
+                                indent: { left: 720 + level * 360, hanging: 360 },
+                            },
+                        },
+                    })),
+                },
+            ],
+        },
+    });
+}
