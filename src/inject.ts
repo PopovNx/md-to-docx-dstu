@@ -40,7 +40,9 @@ export async function injectDocxChunks(docxBuffer: Buffer, chunks: DocxChunk[]):
             relsXml = appendRelationships(relsXml, newRels);
         }
 
-        const sectionBefore = `<w:p><w:pPr>${mainSectPr}</w:pPr></w:p>`;
+        const hasContentBefore = hasBodyContentBeforeChunk(documentXml, index);
+        const sectionBefore = hasContentBefore ? `<w:p><w:pPr>${mainSectPr}</w:pPr></w:p>` : '';
+
         const sectionAfter = cleanSectPr ? `<w:p><w:pPr>${cleanSectPr}</w:pPr></w:p>` : '';
 
         documentXml = replacePlaceholderParagraph(documentXml, index, sectionBefore + mergedContent + sectionAfter);
@@ -68,6 +70,18 @@ function splitBodyContent(documentXml: string): { bodyContent: string; sectPr: s
     const bodyContent = body.slice(0, lastStart).trim();
 
     return { bodyContent, sectPr };
+}
+
+function hasBodyContentBeforeChunk(documentXml: string, index: number): boolean {
+    const bodyStart = documentXml.indexOf('<w:body>') + '<w:body>'.length;
+    const styleIdx = documentXml.indexOf(`w:val="${chunkPlaceholderStyleId(index)}"`);
+
+    const a = documentXml.lastIndexOf('<w:p>', styleIdx);
+    const b = documentXml.lastIndexOf('<w:p ', styleIdx);
+    const placeholderParaStart = Math.max(a, b);
+
+    const between = documentXml.slice(bodyStart, placeholderParaStart);
+    return between.includes('<w:p>') || between.includes('<w:p ');
 }
 
 function extractFinalSectPr(documentXml: string): string {
