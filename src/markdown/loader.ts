@@ -5,6 +5,7 @@ import { Paragraph } from 'docx';
 
 import type { GeneratorPaths, InputFile } from '../types';
 import type { DocxChunk } from '../inject';
+import { applyVars } from '../config';
 import { createChunkPlaceholder } from '../docx';
 import { renderMarkdown } from './renderer';
 
@@ -25,19 +26,32 @@ export type RenderResult = {
     chunks: DocxChunk[];
 };
 
-export async function renderInputFiles(files: InputFile[], paths: GeneratorPaths): Promise<RenderResult> {
+export type FileCallback = (name: string, kind: 'markdown' | 'docx') => () => void;
+
+export async function renderInputFiles(
+    files: InputFile[],
+    paths: GeneratorPaths,
+    vars: Record<string, string> = {},
+    onFile?: FileCallback,
+): Promise<RenderResult> {
     const paragraphs: Paragraph[] = [];
     const chunks: DocxChunk[] = [];
 
     for (const file of files) {
+        const name = path.basename(file.path);
+        const done = onFile?.(name, file.kind);
+
         if (file.kind === 'markdown') {
-            const source = await fs.readFile(file.path, 'utf8');
+            const raw = await fs.readFile(file.path, 'utf8');
+            const source = Object.keys(vars).length > 0 ? applyVars(raw, vars) : raw;
             paragraphs.push(...renderMarkdown(source, paths));
         } else {
             const index = chunks.length;
             paragraphs.push(createChunkPlaceholder(index));
             chunks.push({ index, path: file.path });
         }
+
+        done?.();
     }
 
     return { paragraphs, chunks };

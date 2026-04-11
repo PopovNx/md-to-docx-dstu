@@ -8,16 +8,18 @@ The Markdown sources already encode the thesis structure: chapter headings, sect
 
 ## Run
 
-```bash
-cd md-to-docx
-yarn build
-yarn start -- --input ../pages --images ../images --output ../Result.docx
+Settings live in `endeavour.toml`, paths are relative to it:
+
+```toml
+[dirs]
+pages  = "../pages"
+images = "../images"
+output = "../Result.docx"
 ```
 
-For iterative development:
-
 ```bash
-yarn dev -- --input ../pages --images ../images --output ../Result.docx
+yarn build
+yarn start
 ```
 
 ## What it handles

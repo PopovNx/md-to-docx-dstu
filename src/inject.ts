@@ -3,10 +3,15 @@ import path from 'node:path';
 import JSZip from 'jszip';
 
 import { chunkPlaceholderStyleId } from './docx';
+import { applyVars } from './config';
 
 export type DocxChunk = { index: number; path: string };
 
-export async function injectDocxChunks(docxBuffer: Buffer, chunks: DocxChunk[]): Promise<Buffer> {
+export async function injectDocxChunks(
+    docxBuffer: Buffer,
+    chunks: DocxChunk[],
+    vars: Record<string, string> = {},
+): Promise<Buffer> {
     if (chunks.length === 0) return docxBuffer;
 
     const zip = await JSZip.loadAsync(docxBuffer);
@@ -26,7 +31,7 @@ export async function injectDocxChunks(docxBuffer: Buffer, chunks: DocxChunk[]):
 
         const { bodyContent, sectPr: chunkSectPr } = splitBodyContent(chunkDocXml);
 
-        const cleanBody = stripHeaderFooterRefs(bodyContent);
+        const cleanBody = applyVars(stripHeaderFooterRefs(bodyContent), vars);
         const cleanSectPr = chunkSectPr ? stripHeaderFooterRefs(chunkSectPr) : null;
 
         let mergedContent = cleanBody;
