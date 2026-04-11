@@ -28,6 +28,7 @@ yarn dev -- --input ../pages --images ../images --output ../Result.docx
 - Fenced code blocks
 - Images with Pandoc-style attributes like `.{.center width=500px}`
 - Explicit `\newpage` markers
+- `.docx` pages inserted between Markdown pages, e.g. a title page
 
 ## Notes
 

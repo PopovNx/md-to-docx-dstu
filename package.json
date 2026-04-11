@@ -13,6 +13,7 @@
         "commander": "^14.0.3",
         "docx": "^9.6.1",
         "image-size": "^2.0.2",
+        "jszip": "^3.10.1",
         "markdown-it": "^14.1.1",
         "markdown-it-attrs": "^4.3.1"
     },
