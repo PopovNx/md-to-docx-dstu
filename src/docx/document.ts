@@ -3,6 +3,8 @@ import { AlignmentType, Document, LevelFormat, Paragraph } from 'docx';
 const FONT = 'Times New Roman';
 const FONT_SIZE = '14pt';
 
+const sp = () => ({ before: 0, after: 0, line: 360, lineRule: 'auto' as const });
+
 const PAGE_MARGINS = {
     top: 1440,
     right: 1440,
@@ -51,7 +53,7 @@ export function buildDocument(children: Paragraph[]) {
                     paragraph: {
                         alignment: AlignmentType.JUSTIFIED,
                         indent: { firstLine: 708 },
-                        spacing: { before: 0, after: 120, line: 360, lineRule: 'auto' },
+                        spacing: sp(),
                     },
                 },
                 {
@@ -62,7 +64,7 @@ export function buildDocument(children: Paragraph[]) {
                     run: { font: FONT, size: FONT_SIZE, bold: true },
                     paragraph: {
                         alignment: AlignmentType.CENTER,
-                        spacing: { before: 0, after: 240, line: 360, lineRule: 'auto' },
+                        spacing: sp(),
                     },
                 },
                 {
@@ -73,7 +75,7 @@ export function buildDocument(children: Paragraph[]) {
                     run: { font: FONT, size: FONT_SIZE, bold: true },
                     paragraph: {
                         alignment: AlignmentType.LEFT,
-                        spacing: { before: 120, after: 120, line: 360, lineRule: 'auto' },
+                        spacing: sp(),
                     },
                 },
                 {
@@ -85,7 +87,7 @@ export function buildDocument(children: Paragraph[]) {
                     paragraph: {
                         alignment: AlignmentType.CENTER,
                         indent: { firstLine: 0 },
-                        spacing: { before: 120, after: 0, line: 360, lineRule: 'auto' },
+                        spacing: sp(),
                     },
                 },
                 {
@@ -97,7 +99,7 @@ export function buildDocument(children: Paragraph[]) {
                     paragraph: {
                         alignment: AlignmentType.CENTER,
                         indent: { firstLine: 0 },
-                        spacing: { before: 0, after: 240, line: 360, lineRule: 'auto' },
+                        spacing: sp(),
                     },
                 },
                 {
@@ -108,7 +110,7 @@ export function buildDocument(children: Paragraph[]) {
                     run: { font: FONT, size: FONT_SIZE },
                     paragraph: {
                         alignment: AlignmentType.LEFT,
-                        spacing: { before: 120, after: 120, line: 240, lineRule: 'auto' },
+                        spacing: sp(),
                         indent: { left: 720, right: 0 },
                     },
                 },
@@ -121,12 +123,13 @@ export function buildDocument(children: Paragraph[]) {
                     levels: Array.from({ length: 9 }, (_, level) => ({
                         level,
                         format: LevelFormat.BULLET,
-                        text: '-',
+                        text: '\uF02D',
                         alignment: AlignmentType.LEFT,
                         style: {
                             paragraph: {
                                 indent: { left: 720 + level * 360, hanging: 360 },
                             },
+                            run: { font: 'Symbol' },
                         },
                     })),
                 },

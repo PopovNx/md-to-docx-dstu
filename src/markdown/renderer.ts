@@ -28,10 +28,22 @@ const LIST_OPEN_TOKENS: Partial<Record<string, 'bullet' | 'number'>> = {
     ordered_list_open: 'number',
 };
 
+const emptyParagraphSet = new WeakSet<Paragraph>();
+
+function createEmpty(): Paragraph {
+    const p = createBodyParagraph([]);
+    emptyParagraphSet.add(p);
+    return p;
+}
+
+function isEmptyParagraph(p: Paragraph): boolean {
+    return emptyParagraphSet.has(p);
+}
+
 export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph[] {
     const prepared = normalizeSource(source);
     const tokens = markdown.parse(prepared, {});
-    const blocks: Paragraph[] = [];
+    const raw: Paragraph[] = [];
 
     const listStack: Array<'bullet' | 'number'> = [];
     const listItemFirstBlockStack: boolean[] = [];
@@ -40,7 +52,7 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
         const token = tokens[index];
 
         if (token.type === 'html_block' && token.content.includes('DOCX_PAGE_BREAK')) {
-            blocks.push(createPageBreak());
+            raw.push(createPageBreak());
             continue;
         }
 
@@ -48,7 +60,11 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
             const inline = tokens[index + 1];
             if (inline?.type !== 'inline') continue;
             const level = Number(token.tag.replace('h', '')) as 1 | 2;
-            blocks.push(createHeadingParagraph(level, renderInlineTokens(inline.children ?? [], paths)));
+            raw.push(
+                createEmpty(),
+                createHeadingParagraph(level, renderInlineTokens(inline.children ?? [], paths)),
+                createEmpty(),
+            );
             index += 2;
             continue;
         }
@@ -60,7 +76,7 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
         if (token.type === 'list_item_close') { listItemFirstBlockStack.pop(); continue; }
 
         if (token.type === 'fence' || token.type === 'code_block') {
-            blocks.push(createCodeParagraph(token.content.replace(/\s+$/, '').split('\n')));
+            raw.push(createCodeParagraph(token.content.replace(/\s+$/, '').split('\n')));
             markListItemBlockRendered(listItemFirstBlockStack);
             continue;
         }
@@ -69,14 +85,19 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
             const inline = tokens[index + 1];
             if (inline?.type !== 'inline') continue;
             const rendered = renderParagraphFromInline(inline.children ?? [], paths, listStack, listItemFirstBlockStack);
-            if (Array.isArray(rendered)) blocks.push(...rendered);
-            else blocks.push(rendered);
+            if (Array.isArray(rendered)) raw.push(...rendered);
+            else raw.push(rendered);
             index += 2;
             continue;
         }
     }
 
-    return blocks;
+    return raw.filter((block, i, arr) => {
+        if (!isEmptyParagraph(block)) return true;
+        const prev = arr[i - 1];
+        const next = arr[i + 1];
+        return prev !== undefined && next !== undefined && !isEmptyParagraph(prev);
+    });
 }
 
 function renderParagraphFromInline(
@@ -89,13 +110,13 @@ function renderParagraphFromInline(
     let result: Paragraph | Paragraph[];
 
     if (imageTokens.length > 0) {
-        const imageBlocks = imageTokens.flatMap((imageToken) => {
+        result = imageTokens.flatMap((imageToken) => {
             const caption = imageToken.content.trim();
-            return caption
+            const inner = caption
                 ? [createImageParagraph(buildImageRun(imageToken, paths)), createCaptionParagraph(caption)]
                 : [createImageParagraph(buildImageRun(imageToken, paths))];
+            return [createEmpty(), ...inner, createEmpty()];
         });
-        result = [createBodyParagraph([]), ...imageBlocks, createBodyParagraph([])];
     } else {
         const rendered = renderInlineTokens(inlineChildren, paths);
         const currentListKind = listStack[listStack.length - 1];

@@ -60,9 +60,9 @@ export function createCaptionParagraph(text: string) {
 export function createLinkTextRun(text: string, href?: string, bold?: boolean, italics?: boolean, strike?: boolean) {
     return new TextRun({
         text,
-        bold,
-        italics,
-        strike,
+        bold: bold || undefined,
+        italics: italics || undefined,
+        strike: strike || undefined,
         color: href ? '0563C1' : undefined,
         underline: href ? { type: UnderlineType.SINGLE } : undefined,
         font: 'Times New Roman',
