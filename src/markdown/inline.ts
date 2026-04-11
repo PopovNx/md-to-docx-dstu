@@ -12,13 +12,15 @@ type InlineStyleState = {
     linkHref?: string;
 };
 
-function defaultStyle(): InlineStyleState {
-    return { bold: false, italic: false, strike: false };
-}
+const STYLE_TOGGLES: Partial<Record<string, Partial<InlineStyleState>>> = {
+    strong_open: { bold: true },
+    em_open: { italic: true },
+    s_open: { strike: true },
+};
 
 export function renderInlineTokens(tokens: Token[], paths: GeneratorPaths): ParagraphChild[] {
     const children: ParagraphChild[] = [];
-    const styleStack: InlineStyleState[] = [defaultStyle()];
+    const styleStack: InlineStyleState[] = [{ bold: false, italic: false, strike: false }];
 
     for (const token of tokens) {
         const style = styleStack[styleStack.length - 1];
@@ -39,9 +41,7 @@ export function renderInlineTokens(tokens: Token[], paths: GeneratorPaths): Para
         }
 
         if (token.type === 'html_inline') {
-            if (/<br\s*\/?\s*>/i.test(token.content)) {
-                children.push(new TextRun({ break: 1 }));
-            }
+            if (/<br\s*\/?\s*>/i.test(token.content)) children.push(new TextRun({ break: 1 }));
             continue;
         }
 
@@ -55,39 +55,14 @@ export function renderInlineTokens(tokens: Token[], paths: GeneratorPaths): Para
             continue;
         }
 
-        if (token.type === 'link_close') {
-            if (styleStack.length > 1) styleStack.pop();
+        const styleChange = STYLE_TOGGLES[token.type];
+        if (styleChange !== undefined) {
+            styleStack.push({ ...style, ...styleChange });
             continue;
         }
 
-        if (token.type === 'strong_open') {
-            styleStack.push({ ...style, bold: true });
-            continue;
-        }
-
-        if (token.type === 'strong_close') {
-            if (styleStack.length > 1) styleStack.pop();
-            continue;
-        }
-
-        if (token.type === 'em_open') {
-            styleStack.push({ ...style, italic: true });
-            continue;
-        }
-
-        if (token.type === 'em_close') {
-            if (styleStack.length > 1) styleStack.pop();
-            continue;
-        }
-
-        if (token.type === 's_open') {
-            styleStack.push({ ...style, strike: true });
-            continue;
-        }
-
-        if (token.type === 's_close') {
-            if (styleStack.length > 1) styleStack.pop();
-            continue;
+        if (token.type.endsWith('_close') && styleStack.length > 1) {
+            styleStack.pop();
         }
     }
 
