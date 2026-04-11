@@ -23,6 +23,11 @@ const markdown = new MarkdownIt({
     typographer: false,
 }).use(markdownItAttrs);
 
+const LIST_OPEN_TOKENS: Partial<Record<string, 'bullet' | 'number'>> = {
+    bullet_list_open: 'bullet',
+    ordered_list_open: 'number',
+};
+
 export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph[] {
     const prepared = normalizeSource(source);
     const tokens = markdown.parse(prepared, {});
@@ -48,9 +53,9 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
             continue;
         }
 
-        if (token.type === 'bullet_list_open') { listStack.push('bullet'); continue; }
-        if (token.type === 'ordered_list_open') { listStack.push('number'); continue; }
-        if (token.type === 'bullet_list_close' || token.type === 'ordered_list_close') { listStack.pop(); continue; }
+        const listKind = LIST_OPEN_TOKENS[token.type];
+        if (listKind !== undefined) { listStack.push(listKind); continue; }
+        if (token.type.endsWith('_list_close')) { listStack.pop(); continue; }
         if (token.type === 'list_item_open') { listItemFirstBlockStack.push(true); continue; }
         if (token.type === 'list_item_close') { listItemFirstBlockStack.pop(); continue; }
 
@@ -64,11 +69,8 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
             const inline = tokens[index + 1];
             if (inline?.type !== 'inline') continue;
             const rendered = renderParagraphFromInline(inline.children ?? [], paths, listStack, listItemFirstBlockStack);
-            if (Array.isArray(rendered)) {
-                blocks.push(...rendered);
-            } else if (rendered) {
-                blocks.push(rendered);
-            }
+            if (Array.isArray(rendered)) blocks.push(...rendered);
+            else blocks.push(rendered);
             index += 2;
             continue;
         }
@@ -82,31 +84,30 @@ function renderParagraphFromInline(
     paths: GeneratorPaths,
     listStack: Array<'bullet' | 'number'>,
     listItemFirstBlockStack: boolean[],
-) {
+): Paragraph | Paragraph[] {
     const imageTokens = extractImageOnlyParagraphTokens(inlineChildren);
+    let result: Paragraph | Paragraph[];
+
     if (imageTokens.length > 0) {
-        const imageBlocks: Paragraph[] = [];
-        for (const imageToken of imageTokens) {
-            const image = buildImageRun(imageToken, paths);
+        const imageBlocks = imageTokens.flatMap((imageToken) => {
             const caption = imageToken.content.trim();
-            imageBlocks.push(createImageParagraph(image));
-            if (caption) imageBlocks.push(createCaptionParagraph(caption));
-        }
-        markListItemBlockRendered(listItemFirstBlockStack);
-        return imageBlocks;
-    }
+            return caption
+                ? [createImageParagraph(buildImageRun(imageToken, paths)), createCaptionParagraph(caption)]
+                : [createImageParagraph(buildImageRun(imageToken, paths))];
+        });
+        result = [createBodyParagraph([]), ...imageBlocks, createBodyParagraph([])];
+    } else {
+        const rendered = renderInlineTokens(inlineChildren, paths);
+        const currentListKind = listStack[listStack.length - 1];
+        const isFirstListBlock = listItemFirstBlockStack[listItemFirstBlockStack.length - 1] ?? false;
 
-    const rendered = renderInlineTokens(inlineChildren, paths);
-    const currentListKind = listStack[listStack.length - 1];
-    const currentListItemIsFirstBlock = listItemFirstBlockStack[listItemFirstBlockStack.length - 1] ?? false;
-
-    if (currentListKind && currentListItemIsFirstBlock) {
-        markListItemBlockRendered(listItemFirstBlockStack);
-        return createListParagraph(rendered, currentListKind, listStack.length - 1);
+        result = currentListKind && isFirstListBlock
+            ? createListParagraph(rendered, currentListKind, listStack.length - 1)
+            : createBodyParagraph(rendered);
     }
 
     markListItemBlockRendered(listItemFirstBlockStack);
-    return createBodyParagraph(rendered);
+    return result;
 }
 
 function normalizeSource(source: string) {
@@ -124,8 +125,6 @@ function extractImageOnlyParagraphTokens(inlineChildren: Token[]): Token[] {
     return images;
 }
 
-function markListItemBlockRendered(listItemFirstBlockStack: boolean[]) {
-    if (listItemFirstBlockStack.length > 0) {
-        listItemFirstBlockStack[listItemFirstBlockStack.length - 1] = false;
-    }
+function markListItemBlockRendered(stack: boolean[]) {
+    if (stack.length > 0) stack[stack.length - 1] = false;
 }

@@ -35,15 +35,10 @@ export function createListParagraph(children: ParagraphChild[], listKind: 'bulle
 }
 
 export function createCodeParagraph(lines: string[]) {
-    const children: TextRun[] = [];
-
-    lines.forEach((line, index) => {
-        children.push(new TextRun({ text: line.length > 0 ? line : ' ' }));
-        if (index < lines.length - 1) {
-            children.push(new TextRun({ break: 1 }));
-        }
+    const children = lines.flatMap((line, index) => {
+        const run = new TextRun({ text: line.length > 0 ? line : ' ' });
+        return index < lines.length - 1 ? [run, new TextRun({ break: 1 })] : [run];
     });
-
     return new Paragraph({ style: 'CodeBlock', children });
 }
 

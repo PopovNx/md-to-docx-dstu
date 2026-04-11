@@ -1,5 +1,8 @@
 import { AlignmentType, Document, LevelFormat, Paragraph } from 'docx';
 
+const FONT = 'Times New Roman';
+const FONT_SIZE = '14pt';
+
 const PAGE_MARGINS = {
     top: 1440,
     right: 1440,
@@ -27,8 +30,8 @@ export function buildDocument(children: Paragraph[]) {
             default: {
                 document: {
                     run: {
-                        font: 'Times New Roman',
-                        size: 28,
+                        font: FONT,
+                        size: FONT_SIZE,
                     },
                     paragraph: {
                         spacing: {
@@ -44,7 +47,7 @@ export function buildDocument(children: Paragraph[]) {
                     name: 'BodyText',
                     basedOn: 'Normal',
                     next: 'BodyText',
-                    run: { font: 'Times New Roman', size: 28 },
+                    run: { font: FONT, size: FONT_SIZE },
                     paragraph: {
                         alignment: AlignmentType.JUSTIFIED,
                         indent: { firstLine: 708 },
@@ -56,7 +59,7 @@ export function buildDocument(children: Paragraph[]) {
                     name: 'ChapterTitle',
                     basedOn: 'Normal',
                     next: 'BodyText',
-                    run: { font: 'Times New Roman', size: 28, bold: true },
+                    run: { font: FONT, size: FONT_SIZE, bold: true },
                     paragraph: {
                         alignment: AlignmentType.CENTER,
                         spacing: { before: 0, after: 240, line: 360, lineRule: 'auto' },
@@ -67,7 +70,7 @@ export function buildDocument(children: Paragraph[]) {
                     name: 'SectionTitle',
                     basedOn: 'Normal',
                     next: 'BodyText',
-                    run: { font: 'Times New Roman', size: 28, bold: true },
+                    run: { font: FONT, size: FONT_SIZE, bold: true },
                     paragraph: {
                         alignment: AlignmentType.LEFT,
                         spacing: { before: 120, after: 120, line: 360, lineRule: 'auto' },
@@ -78,7 +81,7 @@ export function buildDocument(children: Paragraph[]) {
                     name: 'ImageBlock',
                     basedOn: 'Normal',
                     next: 'ImageCaption',
-                    run: { font: 'Times New Roman', size: 28 },
+                    run: { font: FONT, size: FONT_SIZE },
                     paragraph: {
                         alignment: AlignmentType.CENTER,
                         indent: { firstLine: 0 },
@@ -90,7 +93,7 @@ export function buildDocument(children: Paragraph[]) {
                     name: 'ImageCaption',
                     basedOn: 'Normal',
                     next: 'BodyText',
-                    run: { font: 'Times New Roman', size: 28 },
+                    run: { font: FONT, size: FONT_SIZE },
                     paragraph: {
                         alignment: AlignmentType.CENTER,
                         indent: { firstLine: 0 },
@@ -102,7 +105,7 @@ export function buildDocument(children: Paragraph[]) {
                     name: 'CodeBlock',
                     basedOn: 'Normal',
                     next: 'BodyText',
-                    run: { font: 'Times New Roman', size: 28 },
+                    run: { font: FONT, size: FONT_SIZE },
                     paragraph: {
                         alignment: AlignmentType.LEFT,
                         spacing: { before: 120, after: 120, line: 240, lineRule: 'auto' },
