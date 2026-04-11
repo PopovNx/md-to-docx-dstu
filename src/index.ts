@@ -7,47 +7,68 @@ import { Command } from 'commander';
 import { Packer } from 'docx';
 
 import { buildDocument } from './docx';
-import { loadInputFiles, renderInputFiles } from './markdown';
+import { loadInputFiles } from './markdown';
 import { injectDocxChunks } from './inject';
+import { CONFIG_FILE, loadConfig, initConfig } from './config';
+import { buildTaskList } from './progress';
+import { log } from './logger';
 
-async function main() {
-    const program = new Command();
+const program = new Command();
 
-    program
-        .name('md-to-docx')
-        .description('Generate a DOCX document directly from Markdown thesis fragments.')
-        .option('-i, --input <dir>', 'Input directory (.md and .docx files)', path.resolve(process.cwd(), '../pages'))
-        .option('-g, --images <dir>', 'Image directory', path.resolve(process.cwd(), '../images'))
-        .option('-o, --output <file>', 'Output DOCX file', path.resolve(process.cwd(), './dist/course-project.docx'));
+program
+    .name('md-to-docx')
+    .description('Convert Markdown + DOCX fragments into a single DOCX document.')
+    .helpOption('-h, --help', 'Show help');
 
-    program.parse();
+program
+    .command('init')
+    .description(`Create ${CONFIG_FILE} in the current directory`)
+    .action(async () => {
+        const configPath = path.resolve(process.cwd(), CONFIG_FILE);
+        try {
+            await initConfig(configPath);
+            console.log(`Created ${CONFIG_FILE}`);
+        } catch (err) {
+            die(err);
+        }
+    });
 
-    const options = program.opts<{ input: string; images: string; output: string }>();
-    const inputFiles = await loadInputFiles(options.input);
+program
+    .command('render', { isDefault: true })
+    .description(`Render using ${CONFIG_FILE} (default command)`)
+    .option('-c, --config <file>', 'Config file path', CONFIG_FILE)
+    .action(async (opts: { config: string }) => {
+        const configPath = path.resolve(process.cwd(), opts.config);
+        const config = await loadConfig(configPath).catch(die);
 
-    if (inputFiles.length === 0) {
-        throw new Error(`No .md or .docx files found in ${options.input}`);
-    }
+        const inputFiles = await loadInputFiles(config.dirs.pages).catch(die);
+        if (inputFiles.length === 0) die(`No .md or .docx files found in ${config.dirs.pages}`);
 
-    const { paragraphs, chunks } = await renderInputFiles(inputFiles, { imageDir: options.images });
+        const tasks = buildTaskList(config, inputFiles);
 
-    const document = buildDocument(paragraphs);
-    let buffer = await Packer.toBuffer(document);
+        const { result } = await tasks.run().catch(die);
 
-    if (chunks.length > 0) {
-        buffer = await injectDocxChunks(buffer, chunks);
-    }
+        log.debug('packing document');
+        const document = buildDocument(result.paragraphs);
+        let buffer = await Packer.toBuffer(document);
 
-    await fs.mkdir(path.dirname(options.output), { recursive: true });
-    await fs.writeFile(options.output, buffer);
+        if (result.chunks.length > 0) {
+            log.debug({ count: result.chunks.length }, 'injecting docx chunks');
+            buffer = await injectDocxChunks(buffer, result.chunks, config.vars);
+        }
 
-    const mdCount = inputFiles.filter((f) => f.kind === 'markdown').length;
-    const docxCount = chunks.length;
-    console.log(`Generated ${options.output}`);
-    console.log(`Processed ${mdCount} Markdown file(s), injected ${docxCount} DOCX file(s).`);
-}
+        await fs.mkdir(path.dirname(config.dirs.output), { recursive: true });
+        await fs.writeFile(config.dirs.output, buffer);
 
-main().catch((error) => {
-    console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+        const kb = (buffer.length / 1024).toFixed(0);
+        console.log(`\nWritten ${config.dirs.output}  (${kb} KB)\n`);
+    });
+
+program.parse();
+
+function die(err: unknown): never {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error(msg);
+    console.error(`\nError: ${msg}\n`);
     process.exit(1);
-});
+}
