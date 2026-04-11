@@ -16,40 +16,50 @@ import {
 import { buildImageRun } from './image';
 import { renderInlineTokens } from './inline';
 
-const markdown = new MarkdownIt({
-    html: true,
-    breaks: false,
-    linkify: true,
-    typographer: false,
-}).use(markdownItAttrs);
+const markdown = new MarkdownIt({ html: true, breaks: false, linkify: true, typographer: false })
+    .use(markdownItAttrs);
 
 const LIST_OPEN_TOKENS: Partial<Record<string, 'bullet' | 'number'>> = {
     bullet_list_open: 'bullet',
     ordered_list_open: 'number',
 };
 
-const emptyParagraphSet = new WeakSet<Paragraph>();
+const emptySet = new WeakSet<Paragraph>();
 
 function createEmpty(): Paragraph {
     const p = createBodyParagraph([]);
-    emptyParagraphSet.add(p);
+    emptySet.add(p);
     return p;
 }
 
-function isEmptyParagraph(p: Paragraph): boolean {
-    return emptyParagraphSet.has(p);
+function isEmpty(p: Paragraph): boolean {
+    return emptySet.has(p);
+}
+
+type ListState = {
+    kinds: Array<'bullet' | 'number'>;
+    firstBlock: boolean[];
+};
+
+function currentListKind(list: ListState): 'bullet' | 'number' | undefined {
+    return list.kinds[list.kinds.length - 1];
+}
+
+function isFirstBlockInListItem(list: ListState): boolean {
+    return list.firstBlock[list.firstBlock.length - 1] ?? false;
+}
+
+function markListBlockRendered(list: ListState): void {
+    if (list.firstBlock.length > 0) list.firstBlock[list.firstBlock.length - 1] = false;
 }
 
 export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph[] {
-    const prepared = normalizeSource(source);
-    const tokens = markdown.parse(prepared, {});
+    const tokens = markdown.parse(normalizeSource(source), {});
     const raw: Paragraph[] = [];
+    const list: ListState = { kinds: [], firstBlock: [] };
 
-    const listStack: Array<'bullet' | 'number'> = [];
-    const listItemFirstBlockStack: boolean[] = [];
-
-    for (let index = 0; index < tokens.length; index += 1) {
-        const token = tokens[index];
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
 
         if (token.type === 'html_block' && token.content.includes('DOCX_PAGE_BREAK')) {
             raw.push(createPageBreak());
@@ -57,87 +67,73 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
         }
 
         if (token.type === 'heading_open') {
-            const inline = tokens[index + 1];
+            const inline = tokens[i + 1];
             if (inline?.type !== 'inline') continue;
             const level = Number(token.tag.replace('h', '')) as 1 | 2;
-            raw.push(
-                createEmpty(),
-                createHeadingParagraph(level, renderInlineTokens(inline.children ?? [], paths)),
-                createEmpty(),
-            );
-            index += 2;
+            raw.push(createEmpty(), createHeadingParagraph(level, renderInlineTokens(inline.children ?? [], paths)), createEmpty());
+            i += 2;
             continue;
         }
 
         const listKind = LIST_OPEN_TOKENS[token.type];
-        if (listKind !== undefined) { listStack.push(listKind); continue; }
-        if (token.type.endsWith('_list_close')) { listStack.pop(); continue; }
-        if (token.type === 'list_item_open') { listItemFirstBlockStack.push(true); continue; }
-        if (token.type === 'list_item_close') { listItemFirstBlockStack.pop(); continue; }
+        if (listKind !== undefined)                { list.kinds.push(listKind); continue; }
+        if (token.type.endsWith('_list_close'))    { list.kinds.pop(); continue; }
+        if (token.type === 'list_item_open')       { list.firstBlock.push(true); continue; }
+        if (token.type === 'list_item_close')      { list.firstBlock.pop(); continue; }
 
         if (token.type === 'fence' || token.type === 'code_block') {
             raw.push(createCodeParagraph(token.content.replace(/\s+$/, '').split('\n')));
-            markListItemBlockRendered(listItemFirstBlockStack);
+            markListBlockRendered(list);
             continue;
         }
 
         if (token.type === 'paragraph_open') {
-            const inline = tokens[index + 1];
+            const inline = tokens[i + 1];
             if (inline?.type !== 'inline') continue;
-            const rendered = renderParagraphFromInline(inline.children ?? [], paths, listStack, listItemFirstBlockStack);
-            if (Array.isArray(rendered)) raw.push(...rendered);
-            else raw.push(rendered);
-            index += 2;
+            const blocks = renderParagraph(inline.children ?? [], paths, list);
+            raw.push(...(Array.isArray(blocks) ? blocks : [blocks]));
+            i += 2;
             continue;
         }
     }
 
-    return raw.filter((block, i, arr) => {
-        if (!isEmptyParagraph(block)) return true;
-        const prev = arr[i - 1];
-        const next = arr[i + 1];
-        return prev !== undefined && next !== undefined && !isEmptyParagraph(prev);
-    });
+    return collapseEmpties(raw);
 }
 
-function renderParagraphFromInline(
-    inlineChildren: Token[],
+function renderParagraph(
+    children: Token[],
     paths: GeneratorPaths,
-    listStack: Array<'bullet' | 'number'>,
-    listItemFirstBlockStack: boolean[],
+    list: ListState,
 ): Paragraph | Paragraph[] {
-    const imageTokens = extractImageOnlyParagraphTokens(inlineChildren);
-    let result: Paragraph | Paragraph[];
+    const imageTokens = extractImageOnlyTokens(children);
 
     if (imageTokens.length > 0) {
-        result = imageTokens.flatMap((imageToken) => {
-            const caption = imageToken.content.trim();
-            const inner = caption
-                ? [createImageParagraph(buildImageRun(imageToken, paths)), createCaptionParagraph(caption)]
-                : [createImageParagraph(buildImageRun(imageToken, paths))];
-            return [createEmpty(), ...inner, createEmpty()];
+        return imageTokens.flatMap((t) => {
+            const caption = t.content.trim();
+            const image = createImageParagraph(buildImageRun(t, paths));
+            return caption
+                ? [createEmpty(), image, createCaptionParagraph(caption), createEmpty()]
+                : [createEmpty(), image, createEmpty()];
         });
-    } else {
-        const rendered = renderInlineTokens(inlineChildren, paths);
-        const currentListKind = listStack[listStack.length - 1];
-        const isFirstListBlock = listItemFirstBlockStack[listItemFirstBlockStack.length - 1] ?? false;
-
-        result = currentListKind && isFirstListBlock
-            ? createListParagraph(rendered, currentListKind, listStack.length - 1)
-            : createBodyParagraph(rendered);
     }
 
-    markListItemBlockRendered(listItemFirstBlockStack);
-    return result;
+    const rendered = renderInlineTokens(children, paths);
+    const kind = currentListKind(list);
+    const isFirstInItem = isFirstBlockInListItem(list);
+    markListBlockRendered(list);
+
+    return kind && isFirstInItem
+        ? createListParagraph(rendered, kind, list.kinds.length - 1)
+        : createBodyParagraph(rendered);
 }
 
-function normalizeSource(source: string) {
+function normalizeSource(source: string): string {
     return source.replace(/^\s*\\newpage\s*$/gm, '<!-- DOCX_PAGE_BREAK -->');
 }
 
-function extractImageOnlyParagraphTokens(inlineChildren: Token[]): Token[] {
+function extractImageOnlyTokens(children: Token[]): Token[] {
     const images: Token[] = [];
-    for (const token of inlineChildren) {
+    for (const token of children) {
         if (token.type === 'image') { images.push(token); continue; }
         if (token.type === 'softbreak' || token.type === 'hardbreak') continue;
         if (token.type === 'text' && token.content.trim() === '') continue;
@@ -146,6 +142,11 @@ function extractImageOnlyParagraphTokens(inlineChildren: Token[]): Token[] {
     return images;
 }
 
-function markListItemBlockRendered(stack: boolean[]) {
-    if (stack.length > 0) stack[stack.length - 1] = false;
+function collapseEmpties(paragraphs: Paragraph[]): Paragraph[] {
+    return paragraphs.filter((p, i, arr) => {
+        if (!isEmpty(p)) return true;
+        const prev = arr[i - 1];
+        const next = arr[i + 1];
+        return prev !== undefined && next !== undefined && !isEmpty(prev);
+    });
 }

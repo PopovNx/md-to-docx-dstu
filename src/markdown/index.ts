@@ -1,1 +1,2 @@
-export { loadMarkdownFiles, renderMarkdownFiles } from './loader';
+export { loadInputFiles, renderInputFiles } from './loader';
+export type { RenderResult } from './loader';

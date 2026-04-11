@@ -52,7 +52,7 @@ export function buildDocument(children: Paragraph[]) {
                     run: { font: FONT, size: FONT_SIZE },
                     paragraph: {
                         alignment: AlignmentType.JUSTIFIED,
-                        indent: { firstLine: 708 },
+                        indent: { firstLine: '1cm' },
                         spacing: sp(),
                     },
                 },
@@ -65,6 +65,7 @@ export function buildDocument(children: Paragraph[]) {
                     paragraph: {
                         alignment: AlignmentType.CENTER,
                         spacing: sp(),
+                        outlineLevel: 0,
                     },
                 },
                 {
@@ -76,6 +77,7 @@ export function buildDocument(children: Paragraph[]) {
                     paragraph: {
                         alignment: AlignmentType.LEFT,
                         spacing: sp(),
+                        outlineLevel: 1,
                     },
                 },
                 {

@@ -3,25 +3,42 @@ import path from 'node:path';
 
 import { Paragraph } from 'docx';
 
-import type { GeneratorPaths } from '../types';
+import type { GeneratorPaths, InputFile } from '../types';
+import type { DocxChunk } from '../inject';
+import { createChunkPlaceholder } from '../docx';
 import { renderMarkdown } from './renderer';
 
-export async function loadMarkdownFiles(inputDir: string): Promise<string[]> {
+export async function loadInputFiles(inputDir: string): Promise<InputFile[]> {
     const entries = await fs.readdir(inputDir, { withFileTypes: true });
 
     return entries
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-        .map((entry) => path.join(inputDir, entry.name))
-        .sort((left, right) => path.basename(left).localeCompare(path.basename(right), undefined, { numeric: true }));
+        .filter((e) => e.isFile() && (e.name.endsWith('.md') || e.name.endsWith('.docx')))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+        .map((e): InputFile => ({
+            kind: e.name.endsWith('.docx') ? 'docx' : 'markdown',
+            path: path.join(inputDir, e.name),
+        }));
 }
 
-export async function renderMarkdownFiles(filePaths: string[], paths: GeneratorPaths): Promise<Paragraph[]> {
-    const rendered: Paragraph[] = [];
+export type RenderResult = {
+    paragraphs: Paragraph[];
+    chunks: DocxChunk[];
+};
 
-    for (const filePath of filePaths) {
-        const source = await fs.readFile(filePath, 'utf8');
-        rendered.push(...renderMarkdown(source, paths));
+export async function renderInputFiles(files: InputFile[], paths: GeneratorPaths): Promise<RenderResult> {
+    const paragraphs: Paragraph[] = [];
+    const chunks: DocxChunk[] = [];
+
+    for (const file of files) {
+        if (file.kind === 'markdown') {
+            const source = await fs.readFile(file.path, 'utf8');
+            paragraphs.push(...renderMarkdown(source, paths));
+        } else {
+            const index = chunks.length;
+            paragraphs.push(createChunkPlaceholder(index));
+            chunks.push({ index, path: file.path });
+        }
     }
 
-    return rendered;
+    return { paragraphs, chunks };
 }

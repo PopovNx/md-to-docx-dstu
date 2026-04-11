@@ -8,4 +8,6 @@ export {
     createImageParagraph,
     createCaptionParagraph,
     createLinkTextRun,
+    createChunkPlaceholder,
+    chunkPlaceholderStyleId,
 } from './paragraphs';

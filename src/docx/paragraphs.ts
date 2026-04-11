@@ -50,6 +50,14 @@ export function createImageParagraph(image: ImageRun) {
     });
 }
 
+export function chunkPlaceholderStyleId(index: number): string {
+    return `InjectChunk_${index}`;
+}
+
+export function createChunkPlaceholder(index: number): Paragraph {
+    return new Paragraph({ style: chunkPlaceholderStyleId(index) });
+}
+
 export function createCaptionParagraph(text: string) {
     return new Paragraph({
         style: 'ImageCaption',
