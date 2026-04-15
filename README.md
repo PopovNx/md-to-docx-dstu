@@ -1,4 +1,4 @@
-# md-to-docx
+# @popovnx/md-to-docx-dstu
 
 TypeScript generator that reads the course Markdown fragments in `../pages` and emits a single DOCX with `docx`, without a Pandoc merge step.
 
@@ -18,8 +18,7 @@ output = "../Result.docx"
 ```
 
 ```bash
-yarn build
-yarn start
+npx @popovnx/md-to-docx-dstu
 ```
 
 ## What it handles

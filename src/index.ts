@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -68,7 +66,6 @@ program.parse();
 
 function die(err: unknown): never {
     const msg = err instanceof Error ? err.message : String(err);
-    log.error(msg);
-    console.error(`\nError: ${msg}\n`);
+    console.error(`\nERROR: ${msg}\n`);
     process.exit(1);
 }

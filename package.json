@@ -1,12 +1,31 @@
 {
-    "name": "md-to-docx",
-    "version": "1.0.0",
-    "private": true,
+    "name": "@popovnx/md-to-docx-dstu",
+    "version": "0.0.1",
+    "private": false,
     "main": "dist/index.js",
+    "description": "Convert Markdown to DOCX",
+    "keywords": [
+        "markdown",
+        "docx",
+        "cli",
+        "converter",
+        "ДСТУ"
+    ],
+    "author": "popovnx",
+    "engines": {
+        "node": ">=18.0.0"
+    },
     "scripts": {
         "build": "tsup",
         "dev": "tsx src/index.ts",
-        "start": "node dist/index.js"
+        "start": "node dist/index.js",
+        "prepublishOnly": "npm run build"
+    },
+    "files": [
+        "dist"
+    ],
+    "bin": {
+        "md-to-docx": "dist/index.js"
     },
     "license": "MIT",
     "dependencies": {

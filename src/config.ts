@@ -16,8 +16,8 @@ export const CONFIG_FILE = 'endeavour.toml';
 const INIT_TEMPLATE = `# endeavour.toml — md-to-docx configuration
 
 [dirs]
-pages  = "../pages"    # .md and .docx input files, sorted numerically
-images = "../images"   # images referenced in markdown
+pages  = "./pages"    # .md and .docx input files, sorted numerically
+images = "./images"   # images referenced in markdown
 output = "./dist/output.docx"
 
 [vars]
