@@ -141,7 +141,7 @@ export function buildDocument(children: Paragraph[]) {
                     levels: Array.from({ length: 9 }, (_, level) => ({
                         level,
                         format: LevelFormat.DECIMAL,
-                        text: `${Array.from({ length: level + 1 }, (_value, index) => `%${index + 1}`).join('.')}.`,
+                        text: `${Array.from({ length: level + 1 }, (_value, index) => `%${index + 1}`).join('.')}. `,
                         alignment: AlignmentType.LEFT,
                         style: {
                             paragraph: {

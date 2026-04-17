@@ -11,7 +11,7 @@ import {
     createHeadingParagraph,
     createImageParagraph,
     createListParagraph,
-    createPageBreak,
+    createPageBreak as createDocxPageBreak,
 } from '../docx';
 import { buildImageRun } from './image';
 import { renderInlineTokens } from './inline';
@@ -26,6 +26,8 @@ const LIST_OPEN_TOKENS: Partial<Record<string, 'bullet' | 'number'>> = {
 
 const emptySet = new WeakSet<Paragraph>();
 const headingSet = new WeakSet<Paragraph>();
+const headingLevelSet = new WeakMap<Paragraph, 1 | 2>();
+const pageBreakSet = new WeakSet<Paragraph>();
 
 function createEmpty(): Paragraph {
     const p = createBodyParagraph([]);
@@ -39,6 +41,14 @@ function isEmpty(p: Paragraph): boolean {
 
 function isHeadingParagraph(p: Paragraph): boolean {
     return headingSet.has(p);
+}
+
+function getHeadingLevel(p: Paragraph): 1 | 2 | undefined {
+    return headingLevelSet.get(p);
+}
+
+function isPageBreakParagraph(p: Paragraph): boolean {
+    return pageBreakSet.has(p);
 }
 
 type ListState = {
@@ -67,7 +77,9 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
         const token = tokens[i];
 
         if (token.type === 'html_block' && token.content.includes('DOCX_PAGE_BREAK')) {
-            raw.push(createPageBreak());
+            const pageBreak = createDocxPageBreak();
+            pageBreakSet.add(pageBreak);
+            raw.push(pageBreak);
             continue;
         }
 
@@ -77,7 +89,14 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
             const level = Number(token.tag.replace('h', '')) as 1 | 2;
             const heading = createHeadingParagraph(level, renderInlineTokens(inline.children ?? [], paths));
             headingSet.add(heading);
-            raw.push(createEmpty(), heading, createEmpty());
+            headingLevelSet.set(heading, level);
+
+            const prev = raw[raw.length - 1];
+            if (level !== 1 || (prev !== undefined && !isPageBreakParagraph(prev))) {
+                raw.push(createEmpty());
+            }
+
+            raw.push(heading, createEmpty());
             i += 2;
             continue;
         }
