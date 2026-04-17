@@ -64,6 +64,8 @@ export function buildDocument(children: Paragraph[]) {
                     run: { font: FONT, size: FONT_SIZE, bold: true },
                     paragraph: {
                         alignment: AlignmentType.CENTER,
+                        keepNext: true,
+                        keepLines: true,
                         spacing: sp(),
                         outlineLevel: 0,
                     },
@@ -76,6 +78,8 @@ export function buildDocument(children: Paragraph[]) {
                     run: { font: FONT, size: FONT_SIZE, bold: true },
                     paragraph: {
                         alignment: AlignmentType.LEFT,
+                        keepNext: true,
+                        keepLines: true,
                         spacing: sp(),
                         outlineLevel: 1,
                         indent: { firstLine: '1cm' },
