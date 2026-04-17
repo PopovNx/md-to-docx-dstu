@@ -25,6 +25,7 @@ const LIST_OPEN_TOKENS: Partial<Record<string, 'bullet' | 'number'>> = {
 };
 
 const emptySet = new WeakSet<Paragraph>();
+const headingSet = new WeakSet<Paragraph>();
 
 function createEmpty(): Paragraph {
     const p = createBodyParagraph([]);
@@ -34,6 +35,10 @@ function createEmpty(): Paragraph {
 
 function isEmpty(p: Paragraph): boolean {
     return emptySet.has(p);
+}
+
+function isHeadingParagraph(p: Paragraph): boolean {
+    return headingSet.has(p);
 }
 
 type ListState = {
@@ -70,16 +75,18 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
             const inline = tokens[i + 1];
             if (inline?.type !== 'inline') continue;
             const level = Number(token.tag.replace('h', '')) as 1 | 2;
-            raw.push(createEmpty(), createHeadingParagraph(level, renderInlineTokens(inline.children ?? [], paths)), createEmpty());
+            const heading = createHeadingParagraph(level, renderInlineTokens(inline.children ?? [], paths));
+            headingSet.add(heading);
+            raw.push(createEmpty(), heading, createEmpty());
             i += 2;
             continue;
         }
 
         const listKind = LIST_OPEN_TOKENS[token.type];
-        if (listKind !== undefined)                { list.kinds.push(listKind); continue; }
-        if (token.type.endsWith('_list_close'))    { list.kinds.pop(); continue; }
-        if (token.type === 'list_item_open')       { list.firstBlock.push(true); continue; }
-        if (token.type === 'list_item_close')      { list.firstBlock.pop(); continue; }
+        if (listKind !== undefined) { list.kinds.push(listKind); continue; }
+        if (token.type.endsWith('_list_close')) { list.kinds.pop(); continue; }
+        if (token.type === 'list_item_open') { list.firstBlock.push(true); continue; }
+        if (token.type === 'list_item_close') { list.firstBlock.pop(); continue; }
 
         if (token.type === 'fence' || token.type === 'code_block') {
             raw.push(createCodeParagraph(token.content.replace(/\s+$/, '').split('\n')));
@@ -143,10 +150,34 @@ function extractImageOnlyTokens(children: Token[]): Token[] {
 }
 
 function collapseEmpties(paragraphs: Paragraph[]): Paragraph[] {
-    return paragraphs.filter((p, i, arr) => {
-        if (!isEmpty(p)) return true;
-        const prev = arr[i - 1];
-        const next = arr[i + 1];
-        return prev !== undefined && next !== undefined && !isEmpty(prev);
-    });
+    const out: Paragraph[] = [];
+
+    for (let i = 0; i < paragraphs.length; i++) {
+        const current = paragraphs[i];
+        if (!isEmpty(current)) {
+            out.push(current);
+            continue;
+        }
+
+        let j = i;
+        while (j + 1 < paragraphs.length && isEmpty(paragraphs[j + 1])) j++;
+
+        const prev = i > 0 ? paragraphs[i - 1] : undefined;
+        const next = j + 1 < paragraphs.length ? paragraphs[j + 1] : undefined;
+
+        const prevNonEmpty = prev !== undefined && !isEmpty(prev);
+        const nextNonEmpty = next !== undefined && !isEmpty(next);
+
+        if (
+            (prevNonEmpty && nextNonEmpty)
+            || (prev === undefined && nextNonEmpty && isHeadingParagraph(next))
+            || (next === undefined && prevNonEmpty && isHeadingParagraph(prev))
+        ) {
+            out.push(current);
+        }
+
+        i = j;
+    }
+
+    return out;
 }
