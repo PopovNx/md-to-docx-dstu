@@ -1,6 +1,6 @@
 {
     "name": "@popovnx/md-to-docx-dstu",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "Convert Markdown to DOCX",
     "license": "MIT",
     "author": "popovnx",
