@@ -13,7 +13,8 @@ export function createPageBreak(): Paragraph {
 }
 
 export function createBodyParagraph(children: ParagraphChild[], alignment = AlignmentType.JUSTIFIED) {
-    return new Paragraph({ style: 'BodyText', alignment, children });
+    const safeChildren = children.length > 0 ? children : [new TextRun({ text: ' ' })];
+    return new Paragraph({ style: 'BodyText', alignment, children: safeChildren });
 }
 
 export function createHeadingParagraph(level: 1 | 2, children: ParagraphChild[]) {

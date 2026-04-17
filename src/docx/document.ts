@@ -78,6 +78,7 @@ export function buildDocument(children: Paragraph[]) {
                         alignment: AlignmentType.LEFT,
                         spacing: sp(),
                         outlineLevel: 1,
+                        indent: { firstLine: '1cm' },
                     },
                 },
                 {
