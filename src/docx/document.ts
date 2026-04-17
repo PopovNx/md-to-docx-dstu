@@ -1,4 +1,4 @@
-import { AlignmentType, Document, LevelFormat, Paragraph } from 'docx';
+import { AlignmentType, Document, LevelFormat, LevelSuffix, Paragraph } from 'docx';
 
 const FONT = 'Times New Roman';
 const FONT_SIZE = '14pt';
@@ -145,7 +145,8 @@ export function buildDocument(children: Paragraph[]) {
                     levels: Array.from({ length: 9 }, (_, level) => ({
                         level,
                         format: LevelFormat.DECIMAL,
-                        text: `${Array.from({ length: level + 1 }, (_value, index) => `%${index + 1}`).join('.')}. `,
+                        text: `${Array.from({ length: level + 1 }, (_value, index) => `%${index + 1}`).join('.')}.`,
+                        suffix: LevelSuffix.SPACE,
                         alignment: AlignmentType.LEFT,
                         style: {
                             paragraph: {
