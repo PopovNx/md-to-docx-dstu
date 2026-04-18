@@ -4,6 +4,11 @@ import {
     PageBreak,
     Paragraph,
     ParagraphChild,
+    TableLayoutType,
+    WidthType,
+    Table,
+    TableCell,
+    TableRow,
     TextRun,
     UnderlineType,
 } from 'docx';
@@ -48,6 +53,29 @@ export function createImageParagraph(image: ImageRun) {
         style: 'ImageBlock',
         alignment: AlignmentType.CENTER,
         children: [image],
+    });
+}
+
+export const TABLE_CONTENT_WIDTH = 9026;
+
+export function createTableCell(children: ParagraphChild[]) {
+    return new TableCell({
+        children: [new Paragraph({ children })],
+    });
+}
+
+export function createTableRow(cells: TableCell[]) {
+    return new TableRow({ children: cells });
+}
+
+export function createTable(rows: TableRow[], columnWidths: number[]) {
+    const totalWidth = columnWidths.reduce((sum, value) => sum + value, 0) || TABLE_CONTENT_WIDTH;
+
+    return new Table({
+        rows,
+        width: { size: totalWidth, type: WidthType.DXA },
+        columnWidths,
+        layout: TableLayoutType.FIXED,
     });
 }
 

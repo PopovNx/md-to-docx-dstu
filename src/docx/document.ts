@@ -1,4 +1,4 @@
-import { AlignmentType, Document, LevelFormat, LevelSuffix, Paragraph } from 'docx';
+import { AlignmentType, Document, LevelFormat, LevelSuffix, Paragraph, Table } from 'docx';
 
 const FONT = 'Times New Roman';
 const FONT_SIZE = '14pt';
@@ -12,7 +12,7 @@ const PAGE_MARGINS = {
     left: 1440,
 };
 
-export function buildDocument(children: Paragraph[]) {
+export function buildDocument(children: Array<Paragraph | Table>) {
     return new Document({
         sections: [
             {
@@ -118,7 +118,7 @@ export function buildDocument(children: Paragraph[]) {
                     paragraph: {
                         alignment: AlignmentType.LEFT,
                         spacing: sp(),
-                        indent: { left: 720, right: 0 },
+                        indent: { left: '1cm', right: 0 },
                     },
                 },
             ],
