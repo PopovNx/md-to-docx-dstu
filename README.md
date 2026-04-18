@@ -1,38 +1,74 @@
 # @popovnx/md-to-docx-dstu
 
-TypeScript generator that reads the course Markdown fragments in `../pages` and emits a single DOCX with `docx`, without a Pandoc merge step.
+Write lab reports and course papers in Markdown, get a DOCX formatted to [DSTU 3008:2015](https://uk.wikipedia.org/wiki/%D0%94%D0%A1%D0%A2%D0%A3_3008:2015) (ДСТУ 3008:2015 «Інформація та документація. Звіти у сфері науки і техніки. Структура та правила оформлювання»).
 
-## Why this exists
+The tool reads `endeavour.toml`, loads `.md` and `.docx` files from the configured pages directory, applies `[[VARNAME]]` substitutions, and writes a single DOCX. Pages that are easier to make in Word, such as a title page or a task form, can be dropped in as `.docx` files and are merged as they are.
 
-The Markdown sources already encode the thesis structure: chapter headings, section headings, page breaks, figures, and code blocks. Generating DOCX directly keeps the first page and document flow under one renderer instead of splitting layout across multiple tools.
+## Quick start
 
-## Run
+Requires Node.js 18 or newer.
 
-Settings live in `endeavour.toml`, paths are relative to it:
+```bash
+npx @popovnx/md-to-docx-dstu init      # creates endeavour.toml
+mkdir pages
+```
 
-```toml
-[dirs]
-pages  = "../pages"
-images = "../images"
-output = "../Result.docx"
+```
+.
+├── endeavour.toml
+├── images/
+│   └── scheme.png
+└── pages/
+    ├── 1.docx       # title page made in Word
+    ├── 2.md
+    └── 3.md
 ```
 
 ```bash
+npx @popovnx/md-to-docx-dstu           # writes output.docx
+```
+
+## Usage
+
+```bash
+npx @popovnx/md-to-docx-dstu init
 npx @popovnx/md-to-docx-dstu
 ```
 
-## What it handles
+The default command is `render`, so the second line is equivalent to:
+
+```bash
+npx @popovnx/md-to-docx-dstu render
+```
+
+If the package has been installed globally or linked locally, the exposed CLI command is:
+
+```bash
+md-to-docx init
+md-to-docx
+```
+
+## Configuration
+
+`endeavour.toml` controls three paths:
+
+- `pages`: input directory for `.md` and `.docx` files
+- `images`: image directory used while rendering Markdown
+- `output`: final DOCX file path
+
+`npx @popovnx/md-to-docx-dstu init` writes a starter config with comments.
+
+## Supported content
 
 - Headings (`#` and `##`)
 - Paragraphs with inline formatting
 - Bullet and numbered lists
+- Tables
 - Fenced code blocks
-- Images with Pandoc-style attributes like `.{.center width=500px}`
+- Images and centered captions
 - Explicit `\newpage` markers
-- `.docx` pages inserted between Markdown pages, e.g. a title page
 
 ## Notes
 
-- The generator expects images in a separate folder, defaulting to `../images` relative to this project.
-- The layout is intentionally conservative: A4 portrait, Arial body text, centered figure captions, and monospaced code blocks.
-- If you later want a dedicated title page, this project can be extended with a front-page Markdown file or a separate cover template.
+- Paths in `endeavour.toml` are resolved relative to that file.
+- The layout is conservative: A4 portrait, Arial body text, centered figure captions, and monospaced code blocks.
