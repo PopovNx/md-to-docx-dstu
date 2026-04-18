@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { Paragraph } from 'docx';
+import { Paragraph, Table } from 'docx';
 
 import type { GeneratorPaths, InputFile } from '../types';
 import type { DocxChunk } from '../inject';
@@ -22,7 +22,7 @@ export async function loadInputFiles(inputDir: string): Promise<InputFile[]> {
 }
 
 export type RenderResult = {
-    paragraphs: Paragraph[];
+    paragraphs: Array<Paragraph | Table>;
     chunks: DocxChunk[];
 };
 
@@ -34,7 +34,7 @@ export async function renderInputFiles(
     vars: Record<string, string> = {},
     onFile?: FileCallback,
 ): Promise<RenderResult> {
-    const paragraphs: Paragraph[] = [];
+    const paragraphs: Array<Paragraph | Table> = [];
     const chunks: DocxChunk[] = [];
 
     for (const file of files) {

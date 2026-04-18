@@ -1,7 +1,7 @@
 import { type Token } from 'markdown-it';
 import MarkdownIt from 'markdown-it';
 import markdownItAttrs from 'markdown-it-attrs';
-import { Paragraph } from 'docx';
+import { Paragraph, Table, TableCell, TableRow } from 'docx';
 
 import type { GeneratorPaths } from '../types';
 import {
@@ -11,6 +11,10 @@ import {
     createHeadingParagraph,
     createImageParagraph,
     createListParagraph,
+    TABLE_CONTENT_WIDTH,
+    createTable,
+    createTableCell,
+    createTableRow,
     createPageBreak as createDocxPageBreak,
 } from '../docx';
 import { buildImageRun } from './image';
@@ -23,6 +27,8 @@ const LIST_OPEN_TOKENS: Partial<Record<string, 'bullet' | 'number'>> = {
     bullet_list_open: 'bullet',
     ordered_list_open: 'number',
 };
+
+type DocxBlock = Paragraph | Table;
 
 const emptySet = new WeakSet<Paragraph>();
 const headingSet = new WeakSet<Paragraph>();
@@ -68,9 +74,9 @@ function markListBlockRendered(list: ListState): void {
     if (list.firstBlock.length > 0) list.firstBlock[list.firstBlock.length - 1] = false;
 }
 
-export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph[] {
+export function renderMarkdown(source: string, paths: GeneratorPaths): DocxBlock[] {
     const tokens = markdown.parse(normalizeSource(source), {});
-    const raw: Paragraph[] = [];
+    const raw: DocxBlock[] = [];
     const list: ListState = { kinds: [], firstBlock: [] };
 
     for (let i = 0; i < tokens.length; i++) {
@@ -92,12 +98,20 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): Paragraph
             headingLevelSet.set(heading, level);
 
             const prev = raw[raw.length - 1];
-            if (level !== 1 || (prev !== undefined && !isPageBreakParagraph(prev))) {
+            if (level !== 1 || (prev !== undefined && (!isParagraphBlock(prev) || !isPageBreakParagraph(prev)))) {
                 raw.push(createEmpty());
             }
 
             raw.push(heading, createEmpty());
             i += 2;
+            continue;
+        }
+
+        if (token.type === 'table_open') {
+            const { table, nextIndex } = renderTable(tokens, i, paths);
+            raw.push(table, createEmpty());
+            markListBlockRendered(list);
+            i = nextIndex;
             continue;
         }
 
@@ -153,6 +167,104 @@ function renderParagraph(
         : createBodyParagraph(rendered);
 }
 
+function renderTable(tokens: Token[], startIndex: number, paths: GeneratorPaths): { table: Table; nextIndex: number } {
+    const rows: TableRow[] = [];
+    const weights: number[] = [];
+    let i = startIndex + 1;
+
+    while (i < tokens.length && tokens[i].type !== 'table_close') {
+        const token = tokens[i];
+
+        if (token.type === 'tr_open') {
+            const result = renderTableRow(tokens, i + 1, paths);
+            rows.push(result.row);
+            for (let col = 0; col < result.widthWeights.length; col++) {
+                weights[col] = Math.max(weights[col] ?? 0, result.widthWeights[col]);
+            }
+            i = result.nextIndex;
+            continue;
+        }
+
+        i++;
+    }
+
+    const columnWidths = normalizeWidths(weights.length > 0 ? weights : [1], TABLE_CONTENT_WIDTH);
+    return { table: createTable(rows, columnWidths), nextIndex: i };
+}
+
+function renderTableRow(tokens: Token[], startIndex: number, paths: GeneratorPaths): { row: TableRow; nextIndex: number; widthWeights: number[] } {
+    const cells: TableCell[] = [];
+    const widthWeights: number[] = [];
+    let i = startIndex;
+    let columnIndex = 0;
+
+    while (i < tokens.length && tokens[i].type !== 'tr_close') {
+        const token = tokens[i];
+
+        if (token.type === 'th_open' || token.type === 'td_open') {
+            const inline = tokens[i + 1];
+            if (inline?.type !== 'inline') {
+                i++;
+                continue;
+            }
+
+            const cellTokens = inline.children ?? [];
+            cells.push(createTableCell(renderInlineTokens(cellTokens, paths)));
+            widthWeights[columnIndex] = Math.max(widthWeights[columnIndex] ?? 0, estimateInlineWidth(cellTokens));
+            columnIndex++;
+            i += 3;
+            continue;
+        }
+
+        i++;
+    }
+
+    return { row: createTableRow(cells), nextIndex: i + 1, widthWeights };
+}
+
+function estimateInlineWidth(tokens: Token[]): number {
+    const text = tokens
+        .map((token) => {
+            if (token.type === 'text' || token.type === 'code_inline') return token.content;
+            if (token.type === 'softbreak' || token.type === 'hardbreak') return ' ';
+            if (token.type === 'html_inline' && /<br\s*\/?\s*>/i.test(token.content)) return ' ';
+            return '';
+        })
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    return Math.max(1, text.length);
+}
+
+function normalizeWidths(weights: number[], totalWidth: number): number[] {
+    const safeWeights = weights.length > 0 ? weights : [1];
+    const normalizedWeights = safeWeights.map((value) => Math.max(1, value));
+    const totalWeight = normalizedWeights.reduce((sum, value) => sum + value, 0);
+
+    const exact = normalizedWeights.map((weight) => (totalWidth * weight) / totalWeight);
+    const widths = exact.map((value) => Math.max(1, Math.floor(value)));
+    let remainder = totalWidth - widths.reduce((sum, value) => sum + value, 0);
+
+    const order = exact
+        .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+        .sort((a, b) => b.fraction - a.fraction);
+
+    for (let i = 0; remainder > 0 && order.length > 0; i++) {
+        widths[order[i % order.length].index] += 1;
+        remainder--;
+    }
+
+    while (remainder < 0) {
+        const widestIndex = widths.reduce((best, value, index, arr) => (value > arr[best] ? index : best), 0);
+        if (widths[widestIndex] <= 1) break;
+        widths[widestIndex] -= 1;
+        remainder++;
+    }
+
+    return widths;
+}
+
 function normalizeSource(source: string): string {
     return source.replace(/^\s*\\newpage\s*$/gm, '<!-- DOCX_PAGE_BREAK -->');
 }
@@ -168,29 +280,37 @@ function extractImageOnlyTokens(children: Token[]): Token[] {
     return images;
 }
 
-function collapseEmpties(paragraphs: Paragraph[]): Paragraph[] {
-    const out: Paragraph[] = [];
+function isParagraphBlock(block: DocxBlock): block is Paragraph {
+    return block instanceof Paragraph;
+}
+
+function collapseEmpties(paragraphs: DocxBlock[]): DocxBlock[] {
+    const out: DocxBlock[] = [];
 
     for (let i = 0; i < paragraphs.length; i++) {
         const current = paragraphs[i];
-        if (!isEmpty(current)) {
+        if (!isParagraphBlock(current) || !isEmpty(current)) {
             out.push(current);
             continue;
         }
 
         let j = i;
-        while (j + 1 < paragraphs.length && isEmpty(paragraphs[j + 1])) j++;
+        while (j + 1 < paragraphs.length) {
+            const nextBlock = paragraphs[j + 1];
+            if (!isParagraphBlock(nextBlock) || !isEmpty(nextBlock)) break;
+            j++;
+        }
 
         const prev = i > 0 ? paragraphs[i - 1] : undefined;
         const next = j + 1 < paragraphs.length ? paragraphs[j + 1] : undefined;
 
-        const prevNonEmpty = prev !== undefined && !isEmpty(prev);
-        const nextNonEmpty = next !== undefined && !isEmpty(next);
+        const prevNonEmpty = prev !== undefined && (!isParagraphBlock(prev) || !isEmpty(prev));
+        const nextNonEmpty = next !== undefined && (!isParagraphBlock(next) || !isEmpty(next));
 
         if (
             (prevNonEmpty && nextNonEmpty)
-            || (prev === undefined && nextNonEmpty && isHeadingParagraph(next))
-            || (next === undefined && prevNonEmpty && isHeadingParagraph(prev))
+            || (prev === undefined && next !== undefined && isParagraphBlock(next) && nextNonEmpty && isHeadingParagraph(next))
+            || (next === undefined && prev !== undefined && isParagraphBlock(prev) && prevNonEmpty && isHeadingParagraph(prev))
         ) {
             out.push(current);
         }
