@@ -67,6 +67,7 @@ md-to-docx
 - Fenced code blocks
 - Images and centered captions
 - Explicit `\newpage` markers
+- Horizontal rules (`---`) as an empty line
 
 ## Notes
 

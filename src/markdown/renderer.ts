@@ -121,6 +121,11 @@ export function renderMarkdown(source: string, paths: GeneratorPaths): DocxBlock
         if (token.type === 'list_item_open') { list.firstBlock.push(true); continue; }
         if (token.type === 'list_item_close') { list.firstBlock.pop(); continue; }
 
+        if (token.type === 'hr') {
+            raw.push(createEmpty());
+            continue;
+        }
+
         if (token.type === 'fence' || token.type === 'code_block') {
             raw.push(createCodeParagraph(token.content.replace(/\s+$/, '').split('\n')));
             markListBlockRendered(list);

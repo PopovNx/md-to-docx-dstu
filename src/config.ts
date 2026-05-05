@@ -18,7 +18,7 @@ const INIT_TEMPLATE = `# endeavour.toml — md-to-docx configuration
 [dirs]
 pages  = "./pages"    # .md and .docx input files, sorted numerically
 images = "./images"   # images referenced in markdown
-output = "./dist/output.docx"
+output = "./output.docx"
 
 [vars]
 # Define variables as [[VARNAME]] — replaced in markdown and injected .docx files
