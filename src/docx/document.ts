@@ -6,10 +6,10 @@ const FONT_SIZE = '14pt';
 const sp = () => ({ before: 0, after: 0, line: 360, lineRule: 'auto' as const });
 
 const PAGE_MARGINS = {
-    top: 1440,
-    right: 1440,
-    bottom: 1440,
-    left: 1440,
+    top: 850,
+    right: 850,
+    bottom: 850,
+    left: 1134,
 };
 
 export function buildDocument(children: Array<Paragraph | Table>) {
