@@ -56,6 +56,13 @@ md-to-docx
 - `images`: image directory used while rendering Markdown
 - `output`: final DOCX file path
 
+Page margins for Markdown pages are set in millimetres under `[page]` (default 15/15/15/20):
+
+```toml
+[page]
+margins = { top = 20, right = 10, bottom = 20, left = 25 }   # DSTU 3008:2015
+```
+
 `npx @popovnx/md-to-docx-dstu init` writes a starter config with comments.
 
 ## Supported content

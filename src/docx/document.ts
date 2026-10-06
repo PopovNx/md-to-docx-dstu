@@ -1,3 +1,4 @@
+import type { PageMargins } from '../config';
 import { AlignmentType, Document, LevelFormat, LevelSuffix, Paragraph, Table } from 'docx';
 
 const FONT = 'Times New Roman';
@@ -5,14 +6,14 @@ const FONT_SIZE = '14pt';
 
 const sp = () => ({ before: 0, after: 0, line: 360, lineRule: 'auto' as const });
 
-const PAGE_MARGINS = {
+const DEFAULT_MARGINS: PageMargins = {
     top: 850,
     right: 850,
     bottom: 850,
     left: 1134,
 };
 
-export function buildDocument(children: Array<Paragraph | Table>) {
+export function buildDocument(children: Array<Paragraph | Table>, margins: PageMargins = DEFAULT_MARGINS) {
     return new Document({
         sections: [
             {
@@ -22,7 +23,7 @@ export function buildDocument(children: Array<Paragraph | Table>) {
                             width: 11906,
                             height: 16838,
                         },
-                        margin: PAGE_MARGINS,
+                        margin: margins,
                     },
                 },
                 children,

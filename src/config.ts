@@ -9,7 +9,27 @@ export type Config = {
         output: string;
     };
     vars: Record<string, string>;
+    margins?: PageMargins;
 };
+
+export type PageMargins = { top: number; right: number; bottom: number; left: number };
+
+const MM_TO_TWIPS = 1440 / 25.4;
+const MARGIN_SIDES = ['top', 'right', 'bottom', 'left'] as const;
+
+function parseMargins(page: Record<string, unknown> | undefined): PageMargins | undefined {
+    const raw = page?.['margins'] as Record<string, unknown> | undefined;
+    if (!raw) return undefined;
+    const margins = {} as PageMargins;
+    for (const side of MARGIN_SIDES) {
+        const mm = raw[side];
+        if (typeof mm !== 'number' || mm < 0) {
+            throw new Error(`${CONFIG_FILE}: [page] margins.${side} must be a non-negative number (mm)`);
+        }
+        margins[side] = Math.round(mm * MM_TO_TWIPS);
+    }
+    return margins;
+}
 
 export const CONFIG_FILE = 'endeavour.toml';
 
@@ -25,6 +45,11 @@ output = "./output.docx"
 # STUDENT_NAME = "Іванов Іван Іванович"
 # GROUP        = "ІСТ-41"
 # YEAR         = "2025"
+
+[page]
+# Page margins in mm for markdown pages (injected .docx keep their own). Default: 15/15/15/20.
+# DSTU 3008:2015:
+# margins = { top = 20, right = 10, bottom = 20, left = 25 }
 `;
 
 export async function initConfig(configPath: string): Promise<void> {
@@ -62,6 +87,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
             output: path.resolve(base, dirs.output),
         },
         vars,
+        margins: parseMargins(parsed['page'] as Record<string, unknown> | undefined),
     };
 }
 
