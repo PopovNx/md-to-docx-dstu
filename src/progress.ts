@@ -4,13 +4,14 @@ import { Listr } from 'listr2';
 import type { Config } from './config';
 import type { InputFile, RenderOptions } from './types';
 import { renderInputFile, type RenderResult } from './markdown';
-import { PAGE_WIDTH } from './docx';
+import { PAGE_HEIGHT, PAGE_WIDTH } from './docx';
 import { log } from './logger';
 
 export function buildTaskList(config: Config, inputFiles: InputFile[]) {
     const opts: RenderOptions = {
         imageDir: config.dirs.images,
         contentWidth: PAGE_WIDTH - config.margins.left - config.margins.right,
+        contentHeight: PAGE_HEIGHT - config.margins.top - config.margins.bottom,
     };
 
     const fileTasks = inputFiles.map(file => {

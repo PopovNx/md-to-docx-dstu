@@ -1,4 +1,4 @@
-export { buildDocument, PAGE_WIDTH } from './document';
+export { buildDocument, PAGE_HEIGHT, PAGE_WIDTH } from './document';
 export {
     createPageBreak,
     createBodyParagraph,

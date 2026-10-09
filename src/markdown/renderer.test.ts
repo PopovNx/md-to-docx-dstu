@@ -8,16 +8,25 @@ import JSZip from 'jszip';
 import { Packer } from 'docx';
 
 import { DEFAULT_MARGINS } from '../config';
-import { buildDocument, PAGE_WIDTH } from '../docx';
+import { buildDocument, PAGE_HEIGHT, PAGE_WIDTH } from '../docx';
 import { collapseEmptyLines } from './blocks';
 import { renderMarkdown } from './renderer';
+
+const CONTENT = {
+    contentWidth: PAGE_WIDTH - DEFAULT_MARGINS.left - DEFAULT_MARGINS.right,
+    contentHeight: PAGE_HEIGHT - DEFAULT_MARGINS.top - DEFAULT_MARGINS.bottom,
+};
 
 const PNG_1PX = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
 async function render(source: string) {
     const imageDir = await fs.mkdtemp(path.join(os.tmpdir(), 'md2docx-md-'));
     await fs.writeFile(path.join(imageDir, 'pic.png'), PNG_1PX);
-    const blocks = collapseEmptyLines(renderMarkdown(source, { imageDir, contentWidth: PAGE_WIDTH - DEFAULT_MARGINS.left - DEFAULT_MARGINS.right }));
+    const tall = Buffer.from(PNG_1PX);
+    tall.writeUInt32BE(1000, 16);
+    tall.writeUInt32BE(4000, 20);
+    await fs.writeFile(path.join(imageDir, 'tall.png'), tall);
+    const blocks = collapseEmptyLines(renderMarkdown(source, { imageDir, ...CONTENT }));
     const zip = await JSZip.loadAsync(await Packer.toBuffer(buildDocument(blocks, DEFAULT_MARGINS)));
     const body = (await zip.file('word/document.xml')!.async('string')).match(/<w:body>([\s\S]*)<\/w:body>/)![1]!;
     return { body, numbering: await zip.file('word/numbering.xml')!.async('string') };
@@ -116,4 +125,13 @@ test('document properties: author and title from [meta], never the library defau
     assert.match(core, /<cp:lastModifiedBy>Попов А\.А\.<\/cp:lastModifiedBy>/);
     assert.match(core, /<dc:title>Лабораторна робота №1<\/dc:title>/);
     assert.doesNotMatch(await coreOf(), /Un-named/);
+});
+
+test('a page-tall figure is scaled down so its caption still fits on the page', async () => {
+    const { body } = await render('![Рисунок 1 – Tall](tall.png)');
+    const [, cx = '', cy = ''] = body.match(/<wp:extent cx="(\d+)" cy="(\d+)"\/>/) ?? [];
+    const EMU_PER_TWIP = 635;
+    assert.ok(Number(cy) <= CONTENT.contentHeight * EMU_PER_TWIP - 3 * 420 * EMU_PER_TWIP, `height ${cy}`);
+    assert.ok(Number(cy) > CONTENT.contentHeight * EMU_PER_TWIP * 0.8, `height ${cy}`);
+    assert.equal(Math.round(Number(cy) / Number(cx)), 4);
 });

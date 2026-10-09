@@ -6,7 +6,7 @@ const FONT = 'Times New Roman';
 const FONT_SIZE = '14pt';
 
 export const PAGE_WIDTH = 11906;
-const PAGE_HEIGHT = 16838;
+export const PAGE_HEIGHT = 16838;
 const PARAGRAPH_INDENT = 567;
 const HEADER_DISTANCE = 680;
 

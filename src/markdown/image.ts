@@ -10,6 +10,8 @@ import type { RenderOptions } from '../types';
 const FALLBACK_WIDTH = 500;
 const FALLBACK_HEIGHT = 300;
 
+const CAPTION_ROOM = 3 * 420 + 300;
+
 const IMAGE_TYPES: Record<string, 'png' | 'jpg' | 'gif' | 'bmp'> = {
     jpeg: 'jpg',
     jpg: 'jpg',
@@ -29,14 +31,15 @@ export function buildImageRun(token: Token, paths: RenderOptions): ImageRun {
     const naturalWidth = dimensions.width ?? FALLBACK_WIDTH;
     const naturalHeight = dimensions.height ?? FALLBACK_HEIGHT;
     const maxWidth = Math.floor(paths.contentWidth / 15);
-    const targetWidth = Math.min(widthAttr ? parseInt(widthAttr, 10) : naturalWidth, maxWidth);
-    const scale = naturalWidth > 0 ? targetWidth / naturalWidth : 1;
+    const maxHeight = Math.floor((paths.contentHeight - CAPTION_ROOM) / 15);
+    const requestedWidth = widthAttr ? parseInt(widthAttr, 10) : naturalWidth;
+    const scale = Math.min(requestedWidth / naturalWidth, maxWidth / naturalWidth, maxHeight / naturalHeight);
 
     return new ImageRun({
         data: buffer,
         type: IMAGE_TYPES[ext] ?? 'png',
         transformation: {
-            width: Math.max(1, Math.round(targetWidth)),
+            width: Math.max(1, Math.round(naturalWidth * scale)),
             height: Math.max(1, Math.round(naturalHeight * scale)),
         },
     });

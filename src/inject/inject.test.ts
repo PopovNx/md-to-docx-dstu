@@ -8,7 +8,7 @@ import JSZip from 'jszip';
 import { AlignmentType, Document, Header, ImageRun, LevelFormat, Packer, Paragraph, Table, TableCell, TableRow, TextRun } from 'docx';
 
 import { DEFAULT_MARGINS } from '../config';
-import { buildDocument, PAGE_WIDTH } from '../docx';
+import { buildDocument, PAGE_HEIGHT, PAGE_WIDTH } from '../docx';
 import { finishPages, loadInputFiles, renderInputFile, type RenderResult } from '../markdown';
 import { injectDocxChunks } from '.';
 import { PartCopier } from './parts';
@@ -52,7 +52,11 @@ async function render(pages: Record<string, string | Buffer>, vars: Record<strin
     for (const [name, content] of Object.entries(pages)) await fs.writeFile(path.join(dir, name), content);
 
     const result: RenderResult = { paragraphs: [], chunks: [] };
-    const opts = { imageDir: dir, contentWidth: PAGE_WIDTH - DEFAULT_MARGINS.left - DEFAULT_MARGINS.right };
+    const opts = {
+        imageDir: dir,
+        contentWidth: PAGE_WIDTH - DEFAULT_MARGINS.left - DEFAULT_MARGINS.right,
+        contentHeight: PAGE_HEIGHT - DEFAULT_MARGINS.top - DEFAULT_MARGINS.bottom,
+    };
     for (const file of await loadInputFiles(dir)) await renderInputFile(file, opts, vars, result);
 
     const { paragraphs, chunks } = finishPages(result);
