@@ -1,7 +1,6 @@
-export type GeneratorPaths = {
+export type RenderOptions = {
     imageDir: string;
+    contentWidth: number;
 };
 
-export type InputFile =
-    | { kind: 'markdown'; path: string }
-    | { kind: 'docx'; path: string };
+export type InputFile = { kind: 'markdown' | 'docx'; path: string };
