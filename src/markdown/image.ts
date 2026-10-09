@@ -5,9 +5,8 @@ import { type Token } from 'markdown-it';
 import { imageSize } from 'image-size';
 import { ImageRun } from 'docx';
 
-import type { GeneratorPaths } from '../types';
+import type { RenderOptions } from '../types';
 
-const MAX_WIDTH = 650;
 const FALLBACK_WIDTH = 500;
 const FALLBACK_HEIGHT = 300;
 
@@ -19,7 +18,7 @@ const IMAGE_TYPES: Record<string, 'png' | 'jpg' | 'gif' | 'bmp'> = {
     bmp: 'bmp',
 };
 
-export function buildImageRun(token: Token, paths: GeneratorPaths): ImageRun {
+export function buildImageRun(token: Token, paths: RenderOptions): ImageRun {
     const source = token.attrGet('src') ?? '';
     const widthAttr = token.attrGet('width');
     const imagePath = path.resolve(paths.imageDir, source);
@@ -29,7 +28,8 @@ export function buildImageRun(token: Token, paths: GeneratorPaths): ImageRun {
 
     const naturalWidth = dimensions.width ?? FALLBACK_WIDTH;
     const naturalHeight = dimensions.height ?? FALLBACK_HEIGHT;
-    const targetWidth = widthAttr ? parseInt(widthAttr, 10) : Math.min(naturalWidth, MAX_WIDTH);
+    const maxWidth = Math.floor(paths.contentWidth / 15);
+    const targetWidth = Math.min(widthAttr ? parseInt(widthAttr, 10) : naturalWidth, maxWidth);
     const scale = naturalWidth > 0 ? targetWidth / naturalWidth : 1;
 
     return new ImageRun({

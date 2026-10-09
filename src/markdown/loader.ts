@@ -3,56 +3,42 @@ import path from 'node:path';
 
 import { Paragraph, Table } from 'docx';
 
-import type { GeneratorPaths, InputFile } from '../types';
+import type { InputFile, RenderOptions } from '../types';
 import type { DocxChunk } from '../inject';
 import { applyVars } from '../config';
 import { createChunkPlaceholder } from '../docx';
-import { renderMarkdown } from './renderer';
-
-export async function loadInputFiles(inputDir: string): Promise<InputFile[]> {
-    const entries = await fs.readdir(inputDir, { withFileTypes: true });
-
-    return entries
-        .filter((e) => e.isFile() && (e.name.endsWith('.md') || e.name.endsWith('.docx')))
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-        .map((e): InputFile => ({
-            kind: e.name.endsWith('.docx') ? 'docx' : 'markdown',
-            path: path.join(inputDir, e.name),
-        }));
-}
+import { isPageBreak, renderMarkdown } from './renderer';
 
 export type RenderResult = {
     paragraphs: Array<Paragraph | Table>;
     chunks: DocxChunk[];
 };
 
-export type FileCallback = (name: string, kind: 'markdown' | 'docx') => () => void;
+export async function loadInputFiles(inputDir: string): Promise<InputFile[]> {
+    const entries = await fs.readdir(inputDir, { withFileTypes: true });
+    return entries
+        .filter(e => e.isFile() && /\.(md|docx)$/.test(e.name))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+        .map(e => ({ kind: e.name.endsWith('.docx') ? 'docx' : 'markdown', path: path.join(inputDir, e.name) }));
+}
 
-export async function renderInputFiles(
-    files: InputFile[],
-    paths: GeneratorPaths,
-    vars: Record<string, string> = {},
-    onFile?: FileCallback,
-): Promise<RenderResult> {
-    const paragraphs: Array<Paragraph | Table> = [];
-    const chunks: DocxChunk[] = [];
+const placeholders = new WeakSet<Paragraph | Table>();
 
-    for (const file of files) {
-        const name = path.basename(file.path);
-        const done = onFile?.(name, file.kind);
+export async function renderInputFile(file: InputFile, opts: RenderOptions, vars: Record<string, string>, result: RenderResult) {
+    const { paragraphs, chunks } = result;
 
-        if (file.kind === 'markdown') {
-            const raw = await fs.readFile(file.path, 'utf8');
-            const source = Object.keys(vars).length > 0 ? applyVars(raw, vars) : raw;
-            paragraphs.push(...renderMarkdown(source, paths));
-        } else {
-            const index = chunks.length;
-            paragraphs.push(createChunkPlaceholder(index));
-            chunks.push({ index, path: file.path });
-        }
-
-        done?.();
+    if (file.kind === 'markdown') {
+        const blocks = renderMarkdown(applyVars(await fs.readFile(file.path, 'utf8'), vars), opts);
+        const last = paragraphs.at(-1);
+        if (last && placeholders.has(last) && isPageBreak(blocks[0])) blocks.shift();
+        paragraphs.push(...blocks);
+        return;
     }
 
-    return { paragraphs, chunks };
+    if (isPageBreak(paragraphs.at(-1))) paragraphs.pop();
+    const prev = paragraphs.at(-1);
+    const placeholder = createChunkPlaceholder(chunks.length);
+    placeholders.add(placeholder);
+    chunks.push({ index: chunks.length, path: file.path, breakBefore: prev !== undefined && !placeholders.has(prev) });
+    paragraphs.push(placeholder);
 }

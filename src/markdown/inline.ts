@@ -1,70 +1,61 @@
 import { type Token } from 'markdown-it';
 import { ParagraphChild, TextRun } from 'docx';
 
-import type { GeneratorPaths } from '../types';
-import { createLinkTextRun } from '../docx';
+import type { RenderOptions } from '../types';
+import { createTextRun, type TextStyle } from '../docx';
 import { buildImageRun } from './image';
 
-type InlineStyleState = {
-    bold: boolean;
-    italic: boolean;
-    strike: boolean;
-    linkHref?: string;
-};
-
-const STYLE_TOGGLES: Partial<Record<string, Partial<InlineStyleState>>> = {
+const STYLE_TOGGLES: Partial<Record<string, TextStyle>> = {
     strong_open: { bold: true },
-    em_open: { italic: true },
+    em_open: { italics: true },
     s_open: { strike: true },
 };
 
-export function renderInlineTokens(tokens: Token[], paths: GeneratorPaths): ParagraphChild[] {
+const isBr = (html: string) => /<br\s*\/?\s*>/i.test(html);
+
+export function renderInlineTokens(tokens: Token[], opts: RenderOptions): ParagraphChild[] {
     const children: ParagraphChild[] = [];
-    const styleStack: InlineStyleState[] = [{ bold: false, italic: false, strike: false }];
+    const styleStack: TextStyle[] = [{}];
 
     for (const token of tokens) {
-        const style = styleStack[styleStack.length - 1];
+        const style = styleStack.at(-1)!;
 
-        if (token.type === 'text') {
-            children.push(createLinkTextRun(token.content.replace(/\u00a0/g, ' '), style.linkHref, style.bold, style.italic, style.strike));
-            continue;
-        }
-
-        if (token.type === 'softbreak' || token.type === 'hardbreak') {
-            children.push(new TextRun({ break: 1 }));
-            continue;
-        }
-
-        if (token.type === 'code_inline') {
-            children.push(new TextRun({ text: token.content, font: 'Courier New', size: 20 }));
-            continue;
-        }
-
-        if (token.type === 'html_inline') {
-            if (/<br\s*\/?\s*>/i.test(token.content)) children.push(new TextRun({ break: 1 }));
-            continue;
-        }
-
-        if (token.type === 'image') {
-            children.push(buildImageRun(token, paths));
-            continue;
-        }
-
-        if (token.type === 'link_open') {
-            styleStack.push({ ...style, linkHref: token.attrGet('href') ?? '' });
-            continue;
-        }
-
-        const styleChange = STYLE_TOGGLES[token.type];
-        if (styleChange !== undefined) {
-            styleStack.push({ ...style, ...styleChange });
-            continue;
-        }
-
-        if (token.type.endsWith('_close') && styleStack.length > 1) {
-            styleStack.pop();
+        switch (token.type) {
+            case 'text':
+            case 'code_inline':
+                children.push(createTextRun(token.content.replace(/\u00a0/g, ' '), style));
+                break;
+            case 'softbreak':
+            case 'hardbreak':
+                children.push(new TextRun({ break: 1 }));
+                break;
+            case 'html_inline':
+                if (isBr(token.content)) children.push(new TextRun({ break: 1 }));
+                break;
+            case 'image':
+                children.push(buildImageRun(token, opts));
+                break;
+            case 'link_open':
+                styleStack.push({ ...style, href: token.attrGet('href') ?? '' });
+                break;
+            default: {
+                const toggle = STYLE_TOGGLES[token.type];
+                if (toggle) styleStack.push({ ...style, ...toggle });
+                else if (token.type.endsWith('_close') && styleStack.length > 1) styleStack.pop();
+            }
         }
     }
 
     return children;
 }
+
+export const inlineText = (tokens: Token[]) =>
+    tokens
+        .map(t => {
+            if (t.type === 'text' || t.type === 'code_inline') return t.content;
+            if (t.type === 'softbreak' || t.type === 'hardbreak' || (t.type === 'html_inline' && isBr(t.content))) return ' ';
+            return '';
+        })
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();

@@ -50,33 +50,56 @@ md-to-docx
 
 ## Configuration
 
-`endeavour.toml` controls three paths:
-
-- `pages`: input directory for `.md` and `.docx` files
-- `images`: image directory used while rendering Markdown
-- `output`: final DOCX file path
-
-Page margins for Markdown pages are set in millimetres under `[page]` (default 15/15/15/20):
-
 ```toml
-[page]
-margins = { top = 20, right = 10, bottom = 20, left = 25 }   # DSTU 3008:2015
+extends = "../common.toml"   # optional: shared settings, overridden key by key by this file
+
+[dirs]
+pages  = "./pages"           # .md and .docx input files, sorted numerically (2.md before 10.md)
+images = "./images"          # images referenced in markdown
+output = "./output.docx"
+
+[vars]                       # [[VARNAME]] is replaced in markdown and in injected .docx files
+LAB_NUMBER = "1"
+
+[page]                       # optional, mm; default is DSTU 3008:2015 — 20/10/20/25
+margins = { left = 30 }      # any side may be overridden
 ```
 
-`npx @popovnx/md-to-docx-dstu init` writes a starter config with comments.
+Paths are resolved relative to the file that declares them, so a shared `common.toml` one level up can hold the author, group, teacher and margins for every lab:
+
+```toml
+# common.toml
+[vars]
+LAB_AUTHOR  = "Іванов Іван Іванович"
+LAB_TEACHER = "доц. Петренко П. П."
+```
 
 ## Supported content
 
 - Headings (`#` and `##`)
 - Paragraphs with inline formatting
 - Bullet and numbered lists
-- Tables
+- Tables (full text width)
 - Fenced code blocks
-- Images and centered captions
+- Images (never wider than the text) and centered captions
 - Explicit `\newpage` markers
 - Horizontal rules (`---`) as an empty line
+- `.docx` pages, e.g. a title page or a task form
 
-## Notes
+## Layout
 
-- Paths in `endeavour.toml` are resolved relative to that file.
-- The layout is conservative: A4 portrait, Arial body text, centered figure captions, and monospaced code blocks.
+DSTU 3008:2015: A4, Times New Roman 14 pt for all text (code included), 1.5 line spacing, 1 cm paragraph indent,
+page numbers top right. A title page placed first counts as page 1 but shows no number.
+
+## Injected .docx pages
+
+A `.docx` page is merged as its own section and looks exactly as when opened on its own: its page setup, styles,
+lists, headers / footers, images and theme come along, and nothing of it leaks into the Markdown pages.
+It always starts on a new page, so a `\newpage` right before or after it is dropped instead of producing a blank page.
+
+## Development
+
+```bash
+npm test        # node:test suite (tsx)
+npm run build   # bundles dist/index.js
+```

@@ -44,7 +44,7 @@ program
 
         const tasks = buildTaskList(config, inputFiles);
 
-        const { result } = await tasks.run().catch(die);
+        const result = await tasks.run().catch(die);
 
         log.debug('packing document');
         const document = buildDocument(result.paragraphs, config.margins);

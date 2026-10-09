@@ -1,2 +1,2 @@
-export { loadInputFiles, renderInputFiles } from './loader';
-export type { RenderResult, FileCallback } from './loader';
+export { loadInputFiles, renderInputFile } from './loader';
+export type { RenderResult } from './loader';
