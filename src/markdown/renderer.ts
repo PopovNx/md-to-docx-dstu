@@ -88,18 +88,18 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
                 takeFreshItem();
                 break;
             case 'inline':
-                renderInline(token, tokens[i - 1], tokens[i + 2]);
+                renderInline(token, tokens[i - 1], tokens[i + 2], tokens[i + 3]);
                 break;
         }
     });
 
-    function renderInline(inline: Token, parent: Token | undefined, next: Token | undefined) {
+    function renderInline(inline: Token, parent: Token | undefined, next: Token | undefined, nextInline: Token | undefined) {
         const children = inline.children ?? [];
         const parentType = parent?.type;
 
         if (parentType === 'heading_open') {
             const level = Number(parent!.tag.slice(1));
-            out.push(emptyLine(), mark(createHeadingParagraph(level, renderInlineTokens(children, opts)), 'heading'), emptyLine());
+            out.push(emptyLine(), mark(createHeadingParagraph(level, renderInlineTokens(children, opts)), 'heading'), emptyLine(true));
             return;
         }
 
@@ -120,7 +120,7 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
         if (images.length > 0) {
             for (const image of images) {
                 const caption = image.content.trim();
-                out.push(emptyLine(), createImageParagraph(buildImageRun(image, opts), { keepNext: caption !== '' }));
+                out.push(emptyLine(true), createImageParagraph(buildImageRun(image, opts), { keepNext: caption !== '' }));
                 if (caption) out.push(createCaptionParagraph(caption));
                 out.push(emptyLine());
             }
@@ -130,7 +130,9 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
         const runs = renderInlineTokens(children, opts);
         const kind = lists.at(-1);
         const fresh = takeFreshItem();
-        out.push(kind && fresh ? createListParagraph(runs, kind, lists.length - 1) : createBodyParagraph(runs, { keepNext: next?.type === 'table_open' }));
+        const introduces = next?.type === 'table_open'
+            || (next?.type === 'paragraph_open' && imageOnlyTokens(nextInline?.children ?? []).length > 0);
+        out.push(kind && fresh ? createListParagraph(runs, kind, lists.length - 1) : createBodyParagraph(runs, { keepNext: introduces }));
     }
 
     return out;

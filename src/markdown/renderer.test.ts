@@ -89,3 +89,19 @@ test('no blank line between consecutive headings, one between heading and text',
     const { body } = await render('# 1 Chapter\n\n## 1.1 Section\n\nText');
     assert.deepEqual(outline(body), ['ChapterTitle:1 Chapter', 'SectionTitle:1.1 Section', 'BodyText:', 'BodyText:Text']);
 });
+
+test('a heading keeps with its text across the blank line, so it never ends a page alone', async () => {
+    const { body } = await render('## 1.1 Section\n\nText\n\nMore');
+    const paragraphs = [...body.matchAll(/<w:p>([\s\S]*?)<\/w:p>/g)].map(([p]) => p);
+    assert.deepEqual(outline(body), ['SectionTitle:1.1 Section', 'BodyText:', 'BodyText:Text', 'BodyText:More']);
+    assert.match(paragraphs[1]!, /<w:keepNext\/>/);
+    assert.doesNotMatch(paragraphs[2]!, /<w:keepNext\/>/);
+});
+
+test('a paragraph introducing a figure keeps with it, other paragraphs do not', async () => {
+    const { body } = await render('Intro\n\n![Рисунок 1 – Pic](pic.png)\n\nAfter\n\nEnd');
+    const paragraphs = [...body.matchAll(/<w:p>([\s\S]*?)<\/w:p>/g)].map(([p]) => p);
+    assert.deepEqual(outline(body), ['BodyText:Intro', 'BodyText:', 'ImageBlock:', 'ImageCaption:Рисунок 1 – Pic', 'BodyText:', 'BodyText:After', 'BodyText:End']);
+    for (const i of [0, 1, 2]) assert.match(paragraphs[i]!, /<w:keepNext\/>/, `paragraph ${i}`);
+    for (const i of [4, 5]) assert.doesNotMatch(paragraphs[i]!, /<w:keepNext\/>/, `paragraph ${i}`);
+});

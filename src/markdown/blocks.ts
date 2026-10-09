@@ -9,7 +9,7 @@ const marks = new WeakMap<DocxBlock, Mark>();
 
 export const mark = <T extends DocxBlock>(block: T, kind: Mark) => (marks.set(block, kind), block);
 export const markOf = (block: DocxBlock | undefined) => (block ? marks.get(block) : undefined);
-export const emptyLine = () => mark(createBodyParagraph([]), 'empty');
+export const emptyLine = (keepNext = false) => mark(createBodyParagraph([], { keepNext }), 'empty');
 
 const startsPage = (block: DocxBlock) => markOf(block) === 'pageBreak' || markOf(block) === 'chunk';
 
