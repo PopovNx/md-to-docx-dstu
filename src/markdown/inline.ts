@@ -36,7 +36,7 @@ export function renderInlineTokens(tokens: Token[], opts: RenderOptions): Paragr
                 children.push(buildImageRun(token, opts));
                 break;
             case 'link_open':
-                styleStack.push({ ...style, href: token.attrGet('href') ?? '' });
+                styleStack.push(style);
                 break;
             default: {
                 const toggle = STYLE_TOGGLES[token.type];

@@ -5,7 +5,7 @@ import { Command } from 'commander';
 import { Packer } from 'docx';
 
 import { buildDocument } from './docx';
-import { loadInputFiles } from './markdown';
+import { finishPages, loadInputFiles } from './markdown';
 import { injectDocxChunks } from './inject';
 import { CONFIG_FILE, loadConfig, initConfig } from './config';
 import { buildTaskList } from './progress';
@@ -44,7 +44,7 @@ program
 
         const tasks = buildTaskList(config, inputFiles);
 
-        const result = await tasks.run().catch(die);
+        const result = finishPages(await tasks.run().catch(die));
 
         log.debug('packing document');
         const document = buildDocument(result.paragraphs, config.margins);

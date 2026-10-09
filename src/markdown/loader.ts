@@ -1,17 +1,16 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { Paragraph, Table } from 'docx';
-
 import type { InputFile, RenderOptions } from '../types';
 import type { DocxChunk } from '../inject';
 import { applyVars } from '../config';
 import { createChunkPlaceholder } from '../docx';
-import { isPageBreak, renderMarkdown } from './renderer';
+import { collapseEmptyLines, mark, markOf, type DocxBlock } from './blocks';
+import { renderMarkdown } from './renderer';
 
 export type RenderResult = {
-    paragraphs: Array<Paragraph | Table>;
-    chunks: DocxChunk[];
+    paragraphs: DocxBlock[];
+    chunks: Array<Omit<DocxChunk, 'breakBefore'>>;
 };
 
 export async function loadInputFiles(inputDir: string): Promise<InputFile[]> {
@@ -22,23 +21,27 @@ export async function loadInputFiles(inputDir: string): Promise<InputFile[]> {
         .map(e => ({ kind: e.name.endsWith('.docx') ? 'docx' : 'markdown', path: path.join(inputDir, e.name) }));
 }
 
-const placeholders = new WeakSet<Paragraph | Table>();
-
 export async function renderInputFile(file: InputFile, opts: RenderOptions, vars: Record<string, string>, result: RenderResult) {
-    const { paragraphs, chunks } = result;
-
     if (file.kind === 'markdown') {
-        const blocks = renderMarkdown(applyVars(await fs.readFile(file.path, 'utf8'), vars), opts);
-        const last = paragraphs.at(-1);
-        if (last && placeholders.has(last) && isPageBreak(blocks[0])) blocks.shift();
-        paragraphs.push(...blocks);
+        result.paragraphs.push(...renderMarkdown(applyVars(await fs.readFile(file.path, 'utf8'), vars), opts));
         return;
     }
+    const index = result.chunks.length;
+    result.paragraphs.push(mark(createChunkPlaceholder(index), 'chunk'));
+    result.chunks.push({ index, path: file.path });
+}
 
-    if (isPageBreak(paragraphs.at(-1))) paragraphs.pop();
-    const prev = paragraphs.at(-1);
-    const placeholder = createChunkPlaceholder(chunks.length);
-    placeholders.add(placeholder);
-    chunks.push({ index: chunks.length, path: file.path, breakBefore: prev !== undefined && !placeholders.has(prev) });
-    paragraphs.push(placeholder);
+export function finishPages({ paragraphs, chunks }: RenderResult): { paragraphs: DocxBlock[]; chunks: DocxChunk[] } {
+    const collapsed = collapseEmptyLines(paragraphs);
+    const blocks = collapsed.filter((block, i) =>
+        markOf(block) !== 'pageBreak' || (markOf(collapsed[i - 1]) !== 'chunk' && markOf(collapsed[i + 1]) !== 'chunk'));
+
+    const placeholderAt = blocks.flatMap((block, i) => (markOf(block) === 'chunk' ? [i] : []));
+    return {
+        paragraphs: blocks,
+        chunks: chunks.map((chunk, n) => {
+            const prev = blocks[placeholderAt[n]! - 1];
+            return { ...chunk, breakBefore: prev !== undefined && markOf(prev) !== 'chunk' };
+        }),
+    };
 }

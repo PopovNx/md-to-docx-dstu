@@ -9,7 +9,7 @@ import { AlignmentType, Document, Header, ImageRun, LevelFormat, Packer, Paragra
 
 import { DEFAULT_MARGINS } from '../config';
 import { buildDocument, PAGE_WIDTH } from '../docx';
-import { loadInputFiles, renderInputFile, type RenderResult } from '../markdown';
+import { finishPages, loadInputFiles, renderInputFile, type RenderResult } from '../markdown';
 import { injectDocxChunks } from '.';
 import { PartCopier } from './parts';
 
@@ -55,8 +55,9 @@ async function render(pages: Record<string, string | Buffer>, vars: Record<strin
     const opts = { imageDir: dir, contentWidth: PAGE_WIDTH - DEFAULT_MARGINS.left - DEFAULT_MARGINS.right };
     for (const file of await loadInputFiles(dir)) await renderInputFile(file, opts, vars, result);
 
-    const packed = await Packer.toBuffer(buildDocument(result.paragraphs, DEFAULT_MARGINS));
-    const zip = await JSZip.loadAsync(await injectDocxChunks(packed, result.chunks, vars));
+    const { paragraphs, chunks } = finishPages(result);
+    const packed = await Packer.toBuffer(buildDocument(paragraphs, DEFAULT_MARGINS));
+    const zip = await JSZip.loadAsync(await injectDocxChunks(packed, chunks, vars));
     const read = (name: string) => zip.file(name)!.async('string');
     return { zip, read, document: await read('word/document.xml') };
 }
@@ -135,6 +136,13 @@ test('consecutive chunks and \\newpage next to a chunk add no blank pages', asyn
     assert.deepEqual(sectionEnds(document).map(s => s.text), ['A', 'First chunk', 'Second chunk']);
     assert.equal(sectPrs(document).length, 4);
     assert.deepEqual(emptySectionParagraphs(document), []);
+});
+
+test('blank lines collapse across files: none between headings split over two files', async () => {
+    const { document } = await render({ '1.md': '# 1 Chapter', '2.md': '## 1.1 Section\n\nText' });
+    const between = document.match(/1 Chapter<\/w:t>([\s\S]*?)1\.1 Section/)![1]!;
+    assert.doesNotMatch(between, /<w:t[^>]*> <\/w:t>/);
+    assert.match(document, /1\.1 Section<\/w:t>[\s\S]*?<w:t[^>]*> <\/w:t>[\s\S]*?Text/);
 });
 
 test('chunk ending with a table gets its own section-break paragraph', async () => {

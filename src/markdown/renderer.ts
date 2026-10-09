@@ -1,9 +1,10 @@
 import MarkdownIt, { type Token } from 'markdown-it';
 import markdownItAttrs from 'markdown-it-attrs';
-import { Paragraph, Table, TableCell, TableRow } from 'docx';
+import { TableCell, TableRow } from 'docx';
 
 import type { RenderOptions } from '../types';
 import {
+    type ListRef,
     createBodyParagraph,
     createCaptionParagraph,
     createCodeParagraph,
@@ -15,6 +16,7 @@ import {
     createTableCell,
     createTableRow,
 } from '../docx';
+import { emptyLine, mark, type DocxBlock } from './blocks';
 import { buildImageRun } from './image';
 import { inlineText, renderInlineTokens } from './inline';
 
@@ -23,20 +25,12 @@ const markdown = new MarkdownIt({ html: true, breaks: false, linkify: true, typo
 
 const PAGE_BREAK_MARKER = 'DOCX_PAGE_BREAK';
 
-type DocxBlock = Paragraph | Table;
-type ListKind = 'bullet' | 'number';
-
-type Mark = 'empty' | 'heading' | 'pageBreak';
-const marks = new WeakMap<DocxBlock, Mark>();
-const mark = <T extends DocxBlock>(block: T, kind: Mark) => (marks.set(block, kind), block);
-const markOf = (block: DocxBlock | undefined) => (block ? marks.get(block) : undefined);
-const empty = () => mark(createBodyParagraph([]), 'empty');
-
 export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[] {
     const tokens = markdown.parse(source.replace(/^\s*\\newpage\s*$/gm, `<!-- ${PAGE_BREAK_MARKER} -->`), {});
     const out: DocxBlock[] = [];
 
-    const lists: ListKind[] = [];
+    const lists: ListRef[] = [];
+    let listCount = 0;
     const freshItems: boolean[] = [];
     const takeFreshItem = () => {
         const fresh = freshItems.at(-1) ?? false;
@@ -46,7 +40,8 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
 
     let rows: TableRow[] = [];
     let cells: TableCell[] = [];
-    let weights: number[] = [];
+    let headerRow = false;
+    let columns: ColumnText[] = [];
 
     tokens.forEach((token, i) => {
         switch (token.type) {
@@ -54,10 +49,10 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
                 if (token.content.includes(PAGE_BREAK_MARKER)) out.push(mark(createPageBreak(), 'pageBreak'));
                 break;
             case 'bullet_list_open':
-                lists.push('bullet');
+                lists.push({ reference: 'bullets', instance: listCount++ });
                 break;
             case 'ordered_list_open':
-                lists.push('number');
+                lists.push({ reference: token.markup === ')' ? 'numbers-paren' : 'numbers-dot', instance: listCount++ });
                 break;
             case 'bullet_list_close':
             case 'ordered_list_close':
@@ -70,7 +65,7 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
                 freshItems.pop();
                 break;
             case 'hr':
-                out.push(empty());
+                out.push(emptyLine());
                 break;
             case 'fence':
             case 'code_block':
@@ -79,40 +74,43 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
                 break;
             case 'table_open':
                 rows = [];
-                weights = [];
+                columns = [];
                 break;
             case 'tr_open':
                 cells = [];
+                headerRow = false;
                 break;
             case 'tr_close':
-                rows.push(createTableRow(cells));
+                rows.push(createTableRow(cells, headerRow));
                 break;
             case 'table_close':
-                out.push(createTable(rows, splitWidth(weights.length > 0 ? weights : [1], opts.contentWidth)), empty());
+                out.push(createTable(rows, columnWidths(columns.length > 0 ? columns : [{ chars: 1, longestWord: 0 }], opts.contentWidth)), emptyLine());
                 takeFreshItem();
                 break;
             case 'inline':
-                renderInline(token, tokens[i - 1]);
+                renderInline(token, tokens[i - 1], tokens[i + 2]);
                 break;
         }
     });
 
-    function renderInline(inline: Token, parent: Token | undefined) {
+    function renderInline(inline: Token, parent: Token | undefined, next: Token | undefined) {
         const children = inline.children ?? [];
         const parentType = parent?.type;
 
         if (parentType === 'heading_open') {
             const level = Number(parent!.tag.slice(1));
-            const prev = out.at(-1);
-            if (level !== 1 || (prev && markOf(prev) !== 'pageBreak')) out.push(empty());
-            out.push(mark(createHeadingParagraph(level, renderInlineTokens(children, opts)), 'heading'), empty());
+            out.push(emptyLine(), mark(createHeadingParagraph(level, renderInlineTokens(children, opts)), 'heading'), emptyLine());
             return;
         }
 
         if (parentType === 'th_open' || parentType === 'td_open') {
             const column = cells.length;
-            cells.push(createTableCell(renderInlineTokens(children, opts)));
-            weights[column] = Math.max(weights[column] ?? 0, inlineText(children).length, 1);
+            headerRow ||= parentType === 'th_open';
+            cells.push(createTableCell(renderInlineTokens(children, opts), parentType === 'th_open'));
+            const text = inlineText(children);
+            const stats = (columns[column] ??= { chars: 1, longestWord: 0 });
+            stats.chars = Math.max(stats.chars, text.length);
+            stats.longestWord = Math.max(stats.longestWord, ...text.split(' ').map(word => word.length));
             return;
         }
 
@@ -122,9 +120,9 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
         if (images.length > 0) {
             for (const image of images) {
                 const caption = image.content.trim();
-                out.push(empty(), createImageParagraph(buildImageRun(image, opts)));
+                out.push(emptyLine(), createImageParagraph(buildImageRun(image, opts), { keepNext: caption !== '' }));
                 if (caption) out.push(createCaptionParagraph(caption));
-                out.push(empty());
+                out.push(emptyLine());
             }
             return;
         }
@@ -132,10 +130,10 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
         const runs = renderInlineTokens(children, opts);
         const kind = lists.at(-1);
         const fresh = takeFreshItem();
-        out.push(kind && fresh ? createListParagraph(runs, kind, lists.length - 1) : createBodyParagraph(runs));
+        out.push(kind && fresh ? createListParagraph(runs, kind, lists.length - 1) : createBodyParagraph(runs, { keepNext: next?.type === 'table_open' }));
     }
 
-    return collapseEmpties(out);
+    return out;
 }
 
 function imageOnlyTokens(children: Token[]): Token[] {
@@ -144,11 +142,23 @@ function imageOnlyTokens(children: Token[]): Token[] {
     return children.every(t => t.type === 'image' || isBlank(t)) ? images : [];
 }
 
-function splitWidth(weights: number[], totalWidth: number): number[] {
-    const weightSum = weights.reduce((sum, w) => sum + w, 0);
-    const exact = weights.map(w => (totalWidth * w) / weightSum);
+type ColumnText = { chars: number; longestWord: number };
+
+const CHAR_TWIPS = 130;
+const CELL_PADDING = 216;
+const MAX_UNBROKEN_WORD = 16;
+
+const sum = (values: number[]) => values.reduce((total, v) => total + v, 0);
+
+function columnWidths(columns: ColumnText[], totalWidth: number): number[] {
+    const minimums = columns.map(c => Math.min(c.longestWord, MAX_UNBROKEN_WORD) * CHAR_TWIPS + CELL_PADDING);
+    const spare = totalWidth - sum(minimums);
+    const chars = sum(columns.map(c => c.chars));
+    const exact = spare <= 0
+        ? minimums.map(m => (totalWidth * m) / sum(minimums))
+        : minimums.map((m, i) => m + (spare * columns[i]!.chars) / chars);
     const widths = exact.map(Math.floor);
-    const leftover = totalWidth - widths.reduce((sum, w) => sum + w, 0);
+    const leftover = totalWidth - sum(widths);
 
     exact
         .map((value, index) => ({ index, fraction: value % 1 }))
@@ -158,20 +168,3 @@ function splitWidth(weights: number[], totalWidth: number): number[] {
 
     return widths;
 }
-
-function collapseEmpties(blocks: DocxBlock[]): DocxBlock[] {
-    return blocks.filter((block, i) => {
-        if (markOf(block) !== 'empty') return true;
-        const prev = blocks[i - 1];
-        if (markOf(prev) === 'empty') return false;
-
-        let end = i;
-        while (markOf(blocks[end + 1]) === 'empty') end++;
-        const next = blocks[end + 1];
-
-        if (prev && next) return true;
-        return markOf(prev ?? next) === 'heading';
-    });
-}
-
-export const isPageBreak = (block: DocxBlock | undefined) => markOf(block) === 'pageBreak';

@@ -78,8 +78,8 @@ LAB_TEACHER = "доц. Петренко П. П."
 
 - Headings (`#` and `##`)
 - Paragraphs with inline formatting
-- Bullet and numbered lists
-- Tables (full text width)
+- Bullet and numbered lists (`1.` or `1)` as written, every list restarts at 1)
+- Tables: full text width, columns sized so words don't break, header row repeated on every page
 - Fenced code blocks
 - Images (never wider than the text) and centered captions
 - Explicit `\newpage` markers
@@ -88,8 +88,11 @@ LAB_TEACHER = "доц. Петренко П. П."
 
 ## Layout
 
-DSTU 3008:2015: A4, Times New Roman 14 pt for all text (code included), 1.5 line spacing, 1 cm paragraph indent,
-page numbers top right. A title page placed first counts as page 1 but shows no number.
+DSTU 3008:2015: A4, Times New Roman 14 pt black for all text (code and links included), 1.5 line spacing,
+1 cm paragraph indent, page numbers top right. A title page placed first counts as page 1 but shows no number.
+Lists start with a dash or number at the paragraph indent. A figure stays on the page of its caption, a table caption
+on the page of its table. No blank line between consecutive headings, also when they come from different files.
+Table text is 12 pt single-spaced (the standard leaves it to the author).
 
 ## Injected .docx pages
 
