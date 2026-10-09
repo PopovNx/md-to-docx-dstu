@@ -1,6 +1,6 @@
 {
     "name": "@popovnx/md-to-docx-dstu",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Combine Markdown and DOCX fragments into a single DOCX",
     "license": "MIT",
     "author": "popovnx",
