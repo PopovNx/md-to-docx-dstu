@@ -1,4 +1,4 @@
-import type { PageMargins } from '../config';
+import type { DocumentMeta, PageMargins } from '../config';
 import type { ListReference } from './paragraphs';
 import { AlignmentType, Document, Header, LevelFormat, LevelSuffix, PageNumber, Paragraph, Table, TextRun } from 'docx';
 
@@ -21,8 +21,11 @@ const pageNumberHeader = () => new Header({
     })],
 });
 
-export function buildDocument(children: Array<Paragraph | Table>, margins: PageMargins) {
+export function buildDocument(children: Array<Paragraph | Table>, margins: PageMargins, meta: DocumentMeta = { author: '' }) {
     return new Document({
+        creator: meta.author,
+        lastModifiedBy: meta.author,
+        ...(meta.title === undefined ? {} : { title: meta.title }),
         sections: [
             {
                 properties: {

@@ -47,7 +47,7 @@ program
         const result = finishPages(await tasks.run().catch(die));
 
         log.debug('packing document');
-        const document = buildDocument(result.paragraphs, config.margins);
+        const document = buildDocument(result.paragraphs, config.margins, config.meta);
         let buffer = await Packer.toBuffer(document);
 
         if (result.chunks.length > 0) {

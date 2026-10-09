@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 
-import { DEFAULT_MARGINS, loadConfig, parseMargins } from './config';
+import { DEFAULT_MARGINS, loadConfig, parseMargins, parseMeta } from './config';
 
 test('extends: shared config is merged key by key, dirs resolve against their own file', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'md2docx-config-'));
@@ -41,4 +41,12 @@ test('parseMargins: DSTU default, partial override, validation', () => {
     assert.deepEqual(parseMargins({ margins: { left: 30 } }), { ...DEFAULT_MARGINS, left: 1701 });
     assert.throws(() => parseMargins({ margins: { top: -1 } }), /margins\.top/);
     assert.throws(() => parseMargins({ margins: { top: '20' } }), /margins\.top/);
+});
+
+test('parseMeta: [[VAR]] substitution, empty author by default, validation', () => {
+    const vars = { AUTHOR: 'Попов А.А.', LAB: '1' };
+    assert.deepEqual(parseMeta({ author: '[[AUTHOR]]', title: 'Лабораторна робота №[[LAB]]' }, vars),
+        { author: 'Попов А.А.', title: 'Лабораторна робота №1' });
+    assert.deepEqual(parseMeta(undefined, vars), { author: '' });
+    assert.throws(() => parseMeta({ author: 1 }, vars), /\[meta\] author/);
 });

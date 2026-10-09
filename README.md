@@ -63,6 +63,10 @@ LAB_NUMBER = "1"
 
 [page]                       # optional, mm; default is DSTU 3008:2015 — 20/10/20/25
 margins = { left = 30 }      # any side may be overridden
+
+[meta]                       # optional: document properties (File → Info), [[VARNAME]] works here
+author = "[[LAB_AUTHOR]]"    # creator / last modified by; empty when not set
+title  = "Лабораторна робота №[[LAB_NUMBER]]"
 ```
 
 Paths are resolved relative to the file that declares them, so a shared `common.toml` one level up can hold the author, group, teacher and margins for every lab:

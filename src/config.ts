@@ -10,7 +10,10 @@ export type Config = {
     };
     vars: Record<string, string>;
     margins: PageMargins;
+    meta: DocumentMeta;
 };
+
+export type DocumentMeta = { author: string; title?: string };
 
 export type PageMargins = { top: number; right: number; bottom: number; left: number };
 
@@ -51,6 +54,11 @@ output = "./output.docx"
 # GROUP        = "ІСТ-41"
 # YEAR         = "2025"
 
+[meta]
+# Document properties shown in Word (File → Info); [[VARNAME]] works here too
+# author = "[[STUDENT_NAME]]"
+# title  = "Лабораторна робота №1"
+
 [page]
 # Page margins in mm for markdown pages (injected .docx, e.g. the title page, keep their own).
 # Default is DSTU 3008:2015; override any side:
@@ -74,11 +82,24 @@ export async function loadConfig(configPath: string): Promise<Config> {
         throw new Error(`${CONFIG_FILE} must have [dirs] with pages, images, and output`);
     }
 
+    const vars = (config['vars'] as Record<string, string> | undefined) ?? {};
     return {
         dirs: { pages: dirs.pages, images: dirs.images, output: dirs.output },
-        vars: (config['vars'] as Record<string, string> | undefined) ?? {},
+        vars,
         margins: parseMargins(config['page'] as Record<string, unknown> | undefined),
+        meta: parseMeta(config['meta'] as Record<string, unknown> | undefined, vars),
     };
+}
+
+export function parseMeta(meta: Record<string, unknown> | undefined, vars: Record<string, string>): DocumentMeta {
+    const field = (key: 'author' | 'title') => {
+        const value = meta?.[key];
+        if (value === undefined) return undefined;
+        if (typeof value !== 'string') throw new Error(`${CONFIG_FILE}: [meta] ${key} must be a string`);
+        return applyVars(value, vars);
+    };
+    const title = field('title');
+    return { author: field('author') ?? '', ...(title === undefined ? {} : { title }) };
 }
 
 type Table = Record<string, unknown>;

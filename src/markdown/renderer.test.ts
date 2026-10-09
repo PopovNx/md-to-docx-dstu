@@ -105,3 +105,15 @@ test('a paragraph introducing a figure keeps with it, other paragraphs do not', 
     for (const i of [0, 1, 2]) assert.match(paragraphs[i]!, /<w:keepNext\/>/, `paragraph ${i}`);
     for (const i of [4, 5]) assert.doesNotMatch(paragraphs[i]!, /<w:keepNext\/>/, `paragraph ${i}`);
 });
+
+test('document properties: author and title from [meta], never the library default "Un-named"', async () => {
+    const coreOf = async (meta?: { author: string; title?: string }) => {
+        const zip = await JSZip.loadAsync(await Packer.toBuffer(buildDocument([], DEFAULT_MARGINS, meta)));
+        return zip.file('docProps/core.xml')!.async('string');
+    };
+    const core = await coreOf({ author: 'Попов А.А.', title: 'Лабораторна робота №1' });
+    assert.match(core, /<dc:creator>Попов А\.А\.<\/dc:creator>/);
+    assert.match(core, /<cp:lastModifiedBy>Попов А\.А\.<\/cp:lastModifiedBy>/);
+    assert.match(core, /<dc:title>Лабораторна робота №1<\/dc:title>/);
+    assert.doesNotMatch(await coreOf(), /Un-named/);
+});
