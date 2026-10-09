@@ -1,50 +1,46 @@
 import type { PageMargins } from '../config';
-import { AlignmentType, Document, LevelFormat, LevelSuffix, Paragraph, Table } from 'docx';
+import { AlignmentType, Document, Header, LevelFormat, LevelSuffix, PageNumber, Paragraph, Table, TextRun } from 'docx';
 
 const FONT = 'Times New Roman';
 const FONT_SIZE = '14pt';
 
+export const PAGE_WIDTH = 11906;
+const PAGE_HEIGHT = 16838;
+const HEADER_DISTANCE = 680;
+
 const sp = () => ({ before: 0, after: 0, line: 360, lineRule: 'auto' as const });
 
-const DEFAULT_MARGINS: PageMargins = {
-    top: 850,
-    right: 850,
-    bottom: 850,
-    left: 1134,
-};
+const pageNumberHeader = () => new Header({
+    children: [new Paragraph({
+        style: 'Normal',
+        alignment: AlignmentType.RIGHT,
+        spacing: { line: 240, lineRule: 'auto' },
+        children: [new TextRun({ children: [PageNumber.CURRENT] })],
+    })],
+});
 
-export function buildDocument(children: Array<Paragraph | Table>, margins: PageMargins = DEFAULT_MARGINS) {
+export function buildDocument(children: Array<Paragraph | Table>, margins: PageMargins) {
     return new Document({
         sections: [
             {
                 properties: {
                     page: {
-                        size: {
-                            width: 11906,
-                            height: 16838,
-                        },
-                        margin: margins,
+                        size: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
+                        margin: { ...margins, header: HEADER_DISTANCE },
                     },
                 },
+                headers: { default: pageNumberHeader() },
                 children,
             },
         ],
         styles: {
-            default: {
-                document: {
-                    run: {
-                        font: FONT,
-                        size: FONT_SIZE,
-                    },
-                    paragraph: {
-                        spacing: {
-                            line: 360,
-                            lineRule: 'auto',
-                        },
-                    },
-                },
-            },
             paragraphStyles: [
+                {
+                    id: 'Normal',
+                    name: 'Normal',
+                    run: { font: FONT, size: FONT_SIZE },
+                    paragraph: { spacing: { line: 360, lineRule: 'auto' } },
+                },
                 {
                     id: 'BodyText',
                     name: 'BodyText',

@@ -1,4 +1,4 @@
-export { buildDocument } from './document';
+export { buildDocument, PAGE_WIDTH } from './document';
 export {
     createPageBreak,
     createBodyParagraph,
@@ -6,12 +6,12 @@ export {
     createListParagraph,
     createCodeParagraph,
     createImageParagraph,
-    TABLE_CONTENT_WIDTH,
     createTableCell,
     createTableRow,
     createTable,
     createCaptionParagraph,
-    createLinkTextRun,
+    createTextRun,
+    type TextStyle,
     createChunkPlaceholder,
     chunkPlaceholderStyleId,
 } from './paragraphs';

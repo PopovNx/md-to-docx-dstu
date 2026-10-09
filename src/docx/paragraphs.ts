@@ -14,7 +14,7 @@ import {
 } from 'docx';
 
 export function createPageBreak(): Paragraph {
-    return new Paragraph({ children: [new PageBreak()] });
+    return new Paragraph({ style: 'Normal', children: [new PageBreak()] });
 }
 
 export function createBodyParagraph(children: ParagraphChild[], alignment = AlignmentType.JUSTIFIED) {
@@ -22,7 +22,7 @@ export function createBodyParagraph(children: ParagraphChild[], alignment = Alig
     return new Paragraph({ style: 'BodyText', alignment, children: safeChildren });
 }
 
-export function createHeadingParagraph(level: 1 | 2, children: ParagraphChild[]) {
+export function createHeadingParagraph(level: number, children: ParagraphChild[]) {
     return new Paragraph({
         style: level === 1 ? 'ChapterTitle' : 'SectionTitle',
         children,
@@ -56,11 +56,9 @@ export function createImageParagraph(image: ImageRun) {
     });
 }
 
-export const TABLE_CONTENT_WIDTH = 9026;
-
 export function createTableCell(children: ParagraphChild[]) {
     return new TableCell({
-        children: [new Paragraph({ children })],
+        children: [new Paragraph({ style: 'Normal', children })],
     });
 }
 
@@ -69,11 +67,9 @@ export function createTableRow(cells: TableCell[]) {
 }
 
 export function createTable(rows: TableRow[], columnWidths: number[]) {
-    const totalWidth = columnWidths.reduce((sum, value) => sum + value, 0) || TABLE_CONTENT_WIDTH;
-
     return new Table({
         rows,
-        width: { size: totalWidth, type: WidthType.DXA },
+        width: { size: columnWidths.reduce((sum, value) => sum + value, 0), type: WidthType.DXA },
         columnWidths,
         layout: TableLayoutType.FIXED,
     });
@@ -94,12 +90,14 @@ export function createCaptionParagraph(text: string) {
     });
 }
 
-export function createLinkTextRun(text: string, href?: string, bold?: boolean, italics?: boolean, strike?: boolean) {
+export type TextStyle = { bold?: true; italics?: true; strike?: true; href?: string };
+
+export function createTextRun(text: string, { bold, italics, strike, href }: TextStyle = {}) {
     return new TextRun({
         text,
-        bold: bold || undefined,
-        italics: italics || undefined,
-        strike: strike || undefined,
+        bold,
+        italics,
+        strike,
         color: href ? '0563C1' : undefined,
         underline: href ? { type: UnderlineType.SINGLE } : undefined,
         font: 'Times New Roman',
