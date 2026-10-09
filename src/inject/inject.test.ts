@@ -69,6 +69,20 @@ const texts = (xml: string) => [...xml.matchAll(/<w:t(?: [^>]*)?>([^<]*)<\/w:t>/
 const sectionEnds = (xml: string) => [...xml.matchAll(/<w:p>(?:(?!<w:p>)[\s\S])*?<w:sectPr[\s\S]*?<\/w:sectPr>[\s\S]*?<\/w:p>/g)]
     .map(([p]) => ({ text: texts(p).join(''), left: leftMargin(p) }));
 
+const styleXml = (styles: string, id: string) =>
+    styles.match(new RegExp(`<w:style [^>]*w:styleId="${id}"[^>]*>[\\s\\S]*?</w:style>`))?.[0] ?? '';
+function styleChain(styles: string, id: string): string[] {
+    const chain = [id];
+    for (let parent = attrOf(styleXml(styles, id), 'basedOn'); parent && !chain.includes(parent); parent = attrOf(styleXml(styles, parent), 'basedOn')) {
+        chain.push(parent);
+    }
+    return chain;
+}
+const attrOf = (xml: string, element: string) => xml.match(new RegExp(`<w:${element} w:val="([^"]+)"`))?.[1];
+
+const paragraphStyle = (document: string, text: string) =>
+    attrOf(document.match(new RegExp(`<w:p>(?:(?!<w:p>)[\\s\\S])*?>${text}</w:t>`))?.[0] ?? '', 'pStyle') ?? '';
+
 const emptySectionParagraphs = (xml: string) =>
     xml.match(/<w:p><w:pPr>(?:<w:pStyle w:val="[^"]*"\/>)?<w:sectPr[\s\S]*?<\/w:sectPr><\/w:pPr><\/w:p>/g) ?? [];
 
@@ -85,10 +99,11 @@ test('title page at the start keeps its page setup, styles and header', async ()
 
     const styles = await read('word/styles.xml');
     assert.doesNotMatch(styles.match(/<w:docDefaults>[\s\S]*?<\/w:docDefaults>/)![0], /rFonts|w:sz|spacing/);
-    assert.match(styles, /w:styleId="ch0_DocDefaults">[\s\S]*?w:after="160"[\s\S]*?w:ascii="Arial"/);
-    assert.match(styles, /w:styleId="ch0_Fancy">[\s\S]*?<w:basedOn w:val="ch0_DocDefaults"\/>/);
-    assert.match(styles, /w:styleId="ch0_Plain"><w:name w:val="ch0_Plain"\/><w:basedOn w:val="ch0_DocDefaults"\/>/);
-    assert.match(document, /<w:pStyle w:val="ch0_Fancy"\/>[\s\S]*?Title Popov[\s\S]*?<w:pStyle w:val="ch0_DocDefaults"\/>[\s\S]*?Second line/);
+    assert.match(styleXml(styles, 'ch0_DocDefaults'), /w:after="160"[\s\S]*?w:ascii="Arial"/);
+    assert.equal(styleChain(styles, 'ch0_Fancy').at(-1), 'ch0_DocDefaults');
+    assert.deepEqual(styleChain(styles, 'ch0_Plain'), ['ch0_Plain', 'ch0_DocDefaults']);
+    assert.equal(paragraphStyle(document, 'Title Popov'), 'ch0_Fancy');
+    assert.equal(styleChain(styles, paragraphStyle(document, 'Second line')).at(-1), 'ch0_DocDefaults');
 
     const [chunkHeaderRef, mainHeaderRef] = sectPrs(document).map(s => s.match(/<w:headerReference [^>]*r:id="([^"]+)"/)?.[1]);
     const rels = await read('word/_rels/document.xml.rels');
@@ -146,11 +161,12 @@ test('blank lines collapse across files: none between headings split over two fi
 });
 
 test('chunk ending with a table gets its own section-break paragraph', async () => {
-    const { document } = await render({ '1.docx': await chunkDocx({ endsWithTable: true }), '2.md': 'After' });
+    const { document, read } = await render({ '1.docx': await chunkDocx({ endsWithTable: true }), '2.md': 'After' });
 
-    const [chunkEnd] = emptySectionParagraphs(document);
-    assert.ok(chunkEnd?.includes('<w:pStyle w:val="ch0_DocDefaults"/>'));
-    assert.match(document, /<\/w:tbl><w:p><w:pPr><w:pStyle w:val="ch0_DocDefaults"\/><w:sectPr/);
+    const sectionStyle = document.match(/<\/w:tbl><w:p><w:pPr><w:pStyle w:val="(ch0_\w+)"\/><w:sectPr/)?.[1];
+    assert.ok(sectionStyle, 'section-break paragraph right after the table, in a chunk style');
+    assert.equal(styleChain(await read('word/styles.xml'), sectionStyle).at(-1), 'ch0_DocDefaults');
+    assert.equal(emptySectionParagraphs(document).length, 1);
 });
 
 test('chunk images and lists keep pointing at their own definitions', async () => {
@@ -179,9 +195,9 @@ test('paragraph style missing from the chunk falls back to the chunk default, no
     const xml = await zip.file('word/document.xml')!.async('string');
     zip.file('word/document.xml', xml.replace('<w:pStyle w:val="Fancy"/>', '<w:pStyle w:val="BodyText"/>'));
 
-    const { document } = await render({ '1.docx': await zip.generateAsync({ type: 'nodebuffer' }), '2.md': 'After' });
+    const { document, read } = await render({ '1.docx': await zip.generateAsync({ type: 'nodebuffer' }), '2.md': 'After' });
 
-    assert.match(document, /<w:pStyle w:val="ch0_DocDefaults"\/>[\s\S]*?Chunk text/);
+    assert.equal(styleChain(await read('word/styles.xml'), paragraphStyle(document, 'Chunk text')).at(-1), 'ch0_DocDefaults');
     assert.doesNotMatch(document, /ch0_BodyText/);
 });
 

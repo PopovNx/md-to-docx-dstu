@@ -83,7 +83,8 @@ export async function loadConfig(configPath: string): Promise<Config> {
 
 type Table = Record<string, unknown>;
 
-const isTable = (value: unknown): value is Table => typeof value === 'object' && value !== null && value.constructor === Object;
+const isTable = (value: unknown): value is Table =>
+    typeof value === 'object' && value !== null && [null, Object.prototype].includes(Object.getPrototypeOf(value));
 
 const deepMerge = (base: Table, override: Table): Table =>
     Object.fromEntries([...new Set([...Object.keys(base), ...Object.keys(override)])].map(key => {
