@@ -1,4 +1,5 @@
 import type { PageMargins } from '../config';
+import type { ListReference } from './paragraphs';
 import { AlignmentType, Document, Header, LevelFormat, LevelSuffix, PageNumber, Paragraph, Table, TextRun } from 'docx';
 
 const FONT = 'Times New Roman';
@@ -6,6 +7,7 @@ const FONT_SIZE = '14pt';
 
 export const PAGE_WIDTH = 11906;
 const PAGE_HEIGHT = 16838;
+const PARAGRAPH_INDENT = 567;
 const HEADER_DISTANCE = 680;
 
 const sp = () => ({ before: 0, after: 0, line: 360, lineRule: 'auto' as const });
@@ -49,7 +51,7 @@ export function buildDocument(children: Array<Paragraph | Table>, margins: PageM
                     run: { font: FONT, size: FONT_SIZE },
                     paragraph: {
                         alignment: AlignmentType.JUSTIFIED,
-                        indent: { firstLine: '1cm' },
+                        indent: { firstLine: PARAGRAPH_INDENT },
                         spacing: sp(),
                     },
                 },
@@ -79,7 +81,7 @@ export function buildDocument(children: Array<Paragraph | Table>, margins: PageM
                         keepLines: true,
                         spacing: sp(),
                         outlineLevel: 1,
-                        indent: { firstLine: '1cm' },
+                        indent: { firstLine: PARAGRAPH_INDENT },
                     },
                 },
                 {
@@ -115,44 +117,41 @@ export function buildDocument(children: Array<Paragraph | Table>, margins: PageM
                     paragraph: {
                         alignment: AlignmentType.LEFT,
                         spacing: sp(),
-                        indent: { left: '1cm', right: 0 },
+                        indent: { left: PARAGRAPH_INDENT, right: 0 },
                     },
+                },
+                {
+                    id: 'TableText',
+                    name: 'TableText',
+                    basedOn: 'Normal',
+                    run: { font: FONT, size: '12pt' },
+                    paragraph: { spacing: { before: 0, after: 0, line: 240, lineRule: 'auto' } },
                 },
             ],
         },
         numbering: {
             config: [
-                {
-                    reference: 'bullets',
-                    levels: Array.from({ length: 9 }, (_, level) => ({
-                        level,
-                        format: LevelFormat.BULLET,
-                        text: '\uF02D',
-                        alignment: AlignmentType.LEFT,
-                        style: {
-                            paragraph: {
-                                indent: { left: 720 + level * 360, hanging: 360 },
-                            },
-                            run: { font: 'Symbol' },
-                        },
-                    })),
-                },
-                {
-                    reference: 'numbers',
-                    levels: Array.from({ length: 9 }, (_, level) => ({
-                        level,
-                        format: LevelFormat.DECIMAL,
-                        text: `${Array.from({ length: level + 1 }, (_value, index) => `%${index + 1}`).join('.')}.`,
-                        suffix: LevelSuffix.SPACE,
-                        alignment: AlignmentType.LEFT,
-                        style: {
-                            paragraph: {
-                                indent: { left: 720 + level * 360, hanging: 360 },
-                            },
-                        },
-                    })),
-                },
+                listNumbering('bullets', LevelFormat.BULLET, () => '–'),
+                listNumbering('numbers-dot', LevelFormat.DECIMAL, level => `%${level + 1}.`),
+                listNumbering('numbers-paren', LevelFormat.DECIMAL, level => `%${level + 1})`),
             ],
         },
     });
+}
+
+function listNumbering(reference: ListReference, format: (typeof LevelFormat)[keyof typeof LevelFormat], text: (level: number) => string) {
+    return {
+        reference,
+        levels: Array.from({ length: 9 }, (_, level) => ({
+            level,
+            format,
+            text: text(level),
+            suffix: LevelSuffix.SPACE,
+            alignment: AlignmentType.LEFT,
+            style: {
+                paragraph: { indent: { left: PARAGRAPH_INDENT * level, firstLine: PARAGRAPH_INDENT } },
+                run: { font: FONT },
+            },
+        })),
+    };
 }

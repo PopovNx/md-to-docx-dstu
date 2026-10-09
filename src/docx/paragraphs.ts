@@ -4,40 +4,35 @@ import {
     PageBreak,
     Paragraph,
     ParagraphChild,
-    TableLayoutType,
-    WidthType,
     Table,
     TableCell,
+    TableLayoutType,
     TableRow,
     TextRun,
-    UnderlineType,
+    WidthType,
 } from 'docx';
+
+export type ListRef = { reference: ListReference; instance: number };
+export type ListReference = 'bullets' | 'numbers-dot' | 'numbers-paren';
 
 export function createPageBreak(): Paragraph {
     return new Paragraph({ style: 'Normal', children: [new PageBreak()] });
 }
 
-export function createBodyParagraph(children: ParagraphChild[], alignment = AlignmentType.JUSTIFIED) {
-    const safeChildren = children.length > 0 ? children : [new TextRun({ text: ' ' })];
-    return new Paragraph({ style: 'BodyText', alignment, children: safeChildren });
+export function createBodyParagraph(children: ParagraphChild[], { keepNext = false } = {}) {
+    return new Paragraph({
+        style: 'BodyText',
+        keepNext: keepNext || undefined,
+        children: children.length > 0 ? children : [new TextRun({ text: ' ' })],
+    });
 }
 
 export function createHeadingParagraph(level: number, children: ParagraphChild[]) {
-    return new Paragraph({
-        style: level === 1 ? 'ChapterTitle' : 'SectionTitle',
-        children,
-    });
+    return new Paragraph({ style: level === 1 ? 'ChapterTitle' : 'SectionTitle', children });
 }
 
-export function createListParagraph(children: ParagraphChild[], listKind: 'bullet' | 'number', level: number) {
-    return new Paragraph({
-        style: 'BodyText',
-        numbering: {
-            reference: listKind === 'bullet' ? 'bullets' : 'numbers',
-            level,
-        },
-        children,
-    });
+export function createListParagraph(children: ParagraphChild[], { reference, instance }: ListRef, level: number) {
+    return new Paragraph({ style: 'BodyText', numbering: { reference, instance, level }, children });
 }
 
 export function createCodeParagraph(lines: string[]) {
@@ -48,22 +43,22 @@ export function createCodeParagraph(lines: string[]) {
     return new Paragraph({ style: 'CodeBlock', children });
 }
 
-export function createImageParagraph(image: ImageRun) {
-    return new Paragraph({
-        style: 'ImageBlock',
-        alignment: AlignmentType.CENTER,
-        children: [image],
-    });
+export function createImageParagraph(image: ImageRun, { keepNext = false } = {}) {
+    return new Paragraph({ style: 'ImageBlock', keepNext: keepNext || undefined, children: [image] });
 }
 
-export function createTableCell(children: ParagraphChild[]) {
+export function createCaptionParagraph(text: string) {
+    return new Paragraph({ style: 'ImageCaption', children: [new TextRun({ text })] });
+}
+
+export function createTableCell(children: ParagraphChild[], header: boolean) {
     return new TableCell({
-        children: [new Paragraph({ style: 'Normal', children })],
+        children: [new Paragraph({ style: 'TableText', alignment: header ? AlignmentType.CENTER : undefined, children })],
     });
 }
 
-export function createTableRow(cells: TableCell[]) {
-    return new TableRow({ children: cells });
+export function createTableRow(cells: TableCell[], header: boolean) {
+    return new TableRow({ children: cells, tableHeader: header || undefined });
 }
 
 export function createTable(rows: TableRow[], columnWidths: number[]) {
@@ -83,24 +78,8 @@ export function createChunkPlaceholder(index: number): Paragraph {
     return new Paragraph({ style: chunkPlaceholderStyleId(index) });
 }
 
-export function createCaptionParagraph(text: string) {
-    return new Paragraph({
-        style: 'ImageCaption',
-        children: [new TextRun({ text })],
-    });
-}
+export type TextStyle = { bold?: true; italics?: true; strike?: true };
 
-export type TextStyle = { bold?: true; italics?: true; strike?: true; href?: string };
-
-export function createTextRun(text: string, { bold, italics, strike, href }: TextStyle = {}) {
-    return new TextRun({
-        text,
-        bold,
-        italics,
-        strike,
-        color: href ? '0563C1' : undefined,
-        underline: href ? { type: UnderlineType.SINGLE } : undefined,
-        font: 'Times New Roman',
-        size: 28,
-    });
+export function createTextRun(text: string, { bold, italics, strike }: TextStyle = {}) {
+    return new TextRun({ text, bold, italics, strike });
 }

@@ -12,6 +12,8 @@ export {
     createCaptionParagraph,
     createTextRun,
     type TextStyle,
+    type ListRef,
+    type ListReference,
     createChunkPlaceholder,
     chunkPlaceholderStyleId,
 } from './paragraphs';
