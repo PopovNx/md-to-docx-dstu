@@ -1,7 +1,6 @@
 import {
     AlignmentType,
     ImageRun,
-    PageBreak,
     Paragraph,
     ParagraphChild,
     Table,
@@ -16,7 +15,7 @@ export type ListRef = { reference: ListReference; instance: number };
 export type ListReference = 'bullets' | 'numbers-dot' | 'numbers-paren';
 
 export function createPageBreak(): Paragraph {
-    return new Paragraph({ style: 'Normal', children: [new PageBreak()] });
+    return new Paragraph({ style: 'Normal', pageBreakBefore: true, children: [] });
 }
 
 export function createBodyParagraph(children: ParagraphChild[], { keepNext = false } = {}) {
