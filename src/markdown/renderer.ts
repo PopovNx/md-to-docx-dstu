@@ -130,8 +130,7 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
         const runs = renderInlineTokens(children, opts);
         const kind = lists.at(-1);
         const fresh = takeFreshItem();
-        const introduces = next?.type === 'table_open'
-            || (next?.type === 'paragraph_open' && imageOnlyTokens(nextInline?.children ?? []).length > 0);
+        const introduces = next?.type === 'table_open';
         out.push(kind && fresh ? createListParagraph(runs, kind, lists.length - 1) : createBodyParagraph(runs, { keepNext: introduces }));
     }
 

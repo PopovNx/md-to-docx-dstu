@@ -107,12 +107,12 @@ test('a heading keeps with its text across the blank line, so it never ends a pa
     assert.doesNotMatch(paragraphs[2]!, /<w:keepNext\/>/);
 });
 
-test('a paragraph introducing a figure keeps with it, other paragraphs do not', async () => {
+test('a figure keeps with its blank line and caption, the text before it does not', async () => {
     const { body } = await render('Intro\n\n![Рисунок 1 – Pic](pic.png)\n\nAfter\n\nEnd');
     const paragraphs = [...body.matchAll(/<w:p>([\s\S]*?)<\/w:p>/g)].map(([p]) => p);
     assert.deepEqual(outline(body), ['BodyText:Intro', 'BodyText:', 'ImageBlock:', 'ImageCaption:Рисунок 1 – Pic', 'BodyText:', 'BodyText:After', 'BodyText:End']);
-    for (const i of [0, 1, 2]) assert.match(paragraphs[i]!, /<w:keepNext\/>/, `paragraph ${i}`);
-    for (const i of [4, 5]) assert.doesNotMatch(paragraphs[i]!, /<w:keepNext\/>/, `paragraph ${i}`);
+    for (const i of [1, 2]) assert.match(paragraphs[i]!, /<w:keepNext\/>/, `paragraph ${i}`);
+    for (const i of [0, 4, 5]) assert.doesNotMatch(paragraphs[i]!, /<w:keepNext\/>/, `paragraph ${i}`);
 });
 
 test('document properties: author and title from [meta], never the library default "Un-named"', async () => {
