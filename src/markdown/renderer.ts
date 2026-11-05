@@ -88,12 +88,12 @@ export function renderMarkdown(source: string, opts: RenderOptions): DocxBlock[]
                 takeFreshItem();
                 break;
             case 'inline':
-                renderInline(token, tokens[i - 1], tokens[i + 2], tokens[i + 3]);
+                renderInline(token, tokens[i - 1], tokens[i + 2]);
                 break;
         }
     });
 
-    function renderInline(inline: Token, parent: Token | undefined, next: Token | undefined, nextInline: Token | undefined) {
+    function renderInline(inline: Token, parent: Token | undefined, next: Token | undefined) {
         const children = inline.children ?? [];
         const parentType = parent?.type;
 

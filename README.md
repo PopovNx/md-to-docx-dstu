@@ -107,6 +107,9 @@ It always starts on a new page, so a `\newpage` right before or after it is drop
 ## Development
 
 ```bash
-npm test        # node:test suite (tsx)
-npm run build   # bundles dist/index.js
+npm install
+npm test            # node:test suite (tsx)
+npm run typecheck   # tsc --noEmit
+npm run build       # bundles dist/index.js
+npm run dev         # run the CLI from source
 ```
