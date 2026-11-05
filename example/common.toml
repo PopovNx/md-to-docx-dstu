@@ -1,0 +1,9 @@
+[vars]
+LAB_AUTHOR  = "Іваненко І. І."
+LAB_GROUP   = "ІСТ-41"
+LAB_COURSE  = "Комп'ютерні мережі"
+LAB_TEACHER = "доц. Петренко П. П."
+LAB_YEAR    = "2026"
+
+[meta]
+author = "[[LAB_AUTHOR]]"

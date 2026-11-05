@@ -1,0 +1,13 @@
+extends = "../common.toml"
+
+[dirs]
+pages  = "./pages"
+images = "./images"
+output = "./report.docx"
+
+[vars]
+LAB_NUMBER = "1"
+LAB_NAME   = "Налаштування статичної маршрутизації"
+
+[meta]
+title = "Лабораторна робота №[[LAB_NUMBER]]"

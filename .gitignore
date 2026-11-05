@@ -2,3 +2,4 @@ node_modules/
 dist/
 *.docx
 *.tsbuildinfo
+!example/**/pages/*.docx

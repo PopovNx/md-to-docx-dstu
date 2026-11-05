@@ -32,6 +32,17 @@ mkdir pages
 npx @popovnx/md-to-docx-dstu           # writes output.docx
 ```
 
+## Example
+
+[`example/`](example) is a complete lab report: a shared `common.toml`, a lab config that extends it, a Word title page with `[[LAB_*]]` variables, and two Markdown pages with headings, lists, a table, a figure and a code block.
+
+```bash
+cd example/lab-1
+npx @popovnx/md-to-docx-dstu
+```
+
+![Rendered example report](docs/preview.png)
+
 ## Usage
 
 ```bash
