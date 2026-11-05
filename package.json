@@ -1,9 +1,25 @@
 {
     "name": "@popovnx/md-to-docx-dstu",
     "version": "0.1.5",
-    "description": "Combine Markdown and DOCX fragments into a single DOCX",
+    "description": "Build DSTU 3008:2015 formatted DOCX reports from Markdown and DOCX fragments",
+    "keywords": [
+        "markdown",
+        "docx",
+        "dstu",
+        "report",
+        "cli",
+        "converter"
+    ],
     "license": "MIT",
     "author": "popovnx",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/PopovNx/md-to-docx-dstu.git"
+    },
+    "homepage": "https://github.com/PopovNx/md-to-docx-dstu#readme",
+    "bugs": {
+        "url": "https://github.com/PopovNx/md-to-docx-dstu/issues"
+    },
     "engines": {
         "node": ">=18.0.0"
     },
