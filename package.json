@@ -1,6 +1,6 @@
 {
     "name": "@popovnx/md-to-docx-dstu",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "Build DSTU 3008:2015 formatted DOCX reports from Markdown and DOCX fragments",
     "keywords": [
         "markdown",
