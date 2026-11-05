@@ -1,4 +1,7 @@
-# @popovnx/md-to-docx-dstu
+# md-to-docx-dstu
+
+[![npm](https://img.shields.io/npm/v/@popovnx/md-to-docx-dstu)](https://www.npmjs.com/package/@popovnx/md-to-docx-dstu)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Write lab reports and course papers in Markdown, get a DOCX formatted to [DSTU 3008:2015](https://uk.wikipedia.org/wiki/%D0%94%D0%A1%D0%A2%D0%A3_3008:2015) (ДСТУ 3008:2015 «Інформація та документація. Звіти у сфері науки і техніки. Структура та правила оформлювання»).
 
@@ -113,3 +116,7 @@ npm run typecheck   # tsc --noEmit
 npm run build       # bundles dist/index.js
 npm run dev         # run the CLI from source
 ```
+
+## License
+
+[MIT](LICENSE)
